@@ -6,39 +6,39 @@ start:
     mov ax, 0x0013
     int 0x10
     
-    ; === Enable VGA Chain-4 Mode for linear VRAM access ===
-    ; This is required for QEMU cirrus VGA
+    ; === Enable VGA Chain-4 Mode ===
+    ; This is REQUIRED for linear pixel access in mode 0x13
     
-    ; Step 1: Reset Sequencer
+    ; Reset Sequencer
     mov dx, 0x03C4
-    mov al, 0x00       ; Index: Reset
+    mov al, 0x00
     out dx, al
     inc dx
-    mov al, 0x01       ; Assert reset
+    mov al, 0x01
     out dx, al
     
-    ; Step 2: Enable Chain-4 in Sequencer Memory Mode (Index 0x04)
+    ; Enable Chain-4 in Sequencer Memory Mode (Index 0x04)
     mov dx, 0x03C4
-    mov al, 0x04       ; Index: Memory Mode
+    mov al, 0x04
     out dx, al
     inc dx
-    mov al, 0x0E       ; Bit 3=1 (Chain4), Bit 2=0, Bit 1=1 (ExtMem)
+    mov al, 0x0E       ; Bit 3=1 (Chain4)
     out dx, al
     
-    ; Step 3: Enable Chain-4 in Graphics Controller Mode (Index 0x05)
+    ; Enable Chain-4 in Graphics Controller Mode (Index 0x05)
     mov dx, 0x03CE
-    mov al, 0x05       ; Index: Mode
+    mov al, 0x05
     out dx, al
     inc dx
-    mov al, 0x40       ; Bit 6=1 (Chain4)
+    mov al, 0x08       ; Bit 3=1 (Chain4), NOT bit 6!
     out dx, al
     
-    ; Step 4: Clear Sequencer Reset
+    ; Clear Sequencer Reset
     mov dx, 0x03C4
-    mov al, 0x00       ; Index: Reset
+    mov al, 0x00
     out dx, al
     inc dx
-    mov al, 0x03       ; Clear reset
+    mov al, 0x03
     out dx, al
     
     ; Clear all segment registers
@@ -244,33 +244,38 @@ draw_rect:
     push di
     push es
     
-    ; Save Y in BP for the loop
-    mov bp, dx
+    ; Save parameters to memory variables
+    mov [rect_x], cx
+    mov [rect_y], dx
+    mov [rect_width], bx
+    mov [rect_height], si
+    mov [rect_color], al
     
     ; Set ES to VRAM
     mov ax, 0xA000
     mov es, ax
     
+    ; Initialize row counter
+    mov bp, dx           ; BP = current Y
+    mov si, [rect_height] ; SI = height counter
+    
 draw_rect_row:
-    push ax
-    push bx
-    push cx
-    
     ; Calculate VRAM offset: Y * 320 + X
-    ; BP has Y, use it for multiplication
-    mov ax, 320
-    mul bp               ; DX:AX = 320 * Y
-    add ax, cx           ; AX = Y * 320 + X
-    mov di, ax
+    ; Use a simpler approach: Y * 320 = Y * 256 + Y * 64
+    mov ax, bp           ; AX = Y
+    mov di, ax           ; DI = Y
+    shl di, 8            ; DI = Y * 256
+    mov dx, ax           ; DX = Y
+    shl dx, 6            ; DX = Y * 64
+    add di, dx           ; DI = Y * 320
+    add di, [rect_x]     ; DI = Y * 320 + X
     
-    mov cx, bx
+    ; Draw one row using rep stosb
+    mov cx, [rect_width]
+    mov al, [rect_color]
     rep stosb
     
-    pop cx
-    pop bx
-    pop ax
-    
-    inc bp               ; Y++ (this should move to next row)
+    inc bp               ; Y++
     dec si               ; height--
     jnz draw_rect_row
     
@@ -279,6 +284,13 @@ draw_rect_row:
     pop si
     pop bp
     ret
+
+; Rectangle parameters storage
+rect_x: dw 0
+rect_y: dw 0
+rect_width: dw 0
+rect_height: dw 0
+rect_color: db 0
 
 ; ============================================================
 ; Draw an 8x8 character using embedded font
