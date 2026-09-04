@@ -1,0 +1,411 @@
+    ; Set palette for yellow-green to orange gradient logo colors (indices 0x01-0x20)
+    ; VGA palette port: 0x03C8 (write index), 0x03C9 (write RGB data)
+    ; Gradient: Yellow-green (0x01, top) -> Orange (0x20, bottom)
+
+    ; Color 0x01: Yellow-green (RGB: 50, 51, 2)
+    mov dx, 0x03C8
+    mov al, 0x01
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 50
+    out dx, al
+    mov al, 51
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x02: Yellow-green (RGB: 50, 50, 2)
+    mov dx, 0x03C8
+    mov al, 0x02
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 50
+    out dx, al
+    mov al, 50
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x03: Yellow-green (RGB: 50, 49, 2)
+    mov dx, 0x03C8
+    mov al, 0x03
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 50
+    out dx, al
+    mov al, 49
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x04: Yellow-green (RGB: 50, 49, 2)
+    mov dx, 0x03C8
+    mov al, 0x04
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 50
+    out dx, al
+    mov al, 49
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x05: Yellow-green (RGB: 51, 48, 2)
+    mov dx, 0x03C8
+    mov al, 0x05
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 51
+    out dx, al
+    mov al, 48
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x06: Yellow-green (RGB: 51, 47, 2)
+    mov dx, 0x03C8
+    mov al, 0x06
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 51
+    out dx, al
+    mov al, 47
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x07: Yellow-green (RGB: 51, 47, 2)
+    mov dx, 0x03C8
+    mov al, 0x07
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 51
+    out dx, al
+    mov al, 47
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x08: Yellow-green (RGB: 51, 46, 2)
+    mov dx, 0x03C8
+    mov al, 0x08
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 51
+    out dx, al
+    mov al, 46
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x09: Yellow-gold (RGB: 52, 45, 2)
+    mov dx, 0x03C8
+    mov al, 0x09
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 52
+    out dx, al
+    mov al, 45
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x0A: Yellow-gold (RGB: 52, 45, 2)
+    mov dx, 0x03C8
+    mov al, 0x0A
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 52
+    out dx, al
+    mov al, 45
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x0B: Yellow-gold (RGB: 52, 44, 2)
+    mov dx, 0x03C8
+    mov al, 0x0B
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 52
+    out dx, al
+    mov al, 44
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x0C: Yellow-gold (RGB: 52, 44, 2)
+    mov dx, 0x03C8
+    mov al, 0x0C
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 52
+    out dx, al
+    mov al, 44
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x0D: Yellow-gold (RGB: 52, 43, 2)
+    mov dx, 0x03C8
+    mov al, 0x0D
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 52
+    out dx, al
+    mov al, 43
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x0E: Yellow-gold (RGB: 52, 43, 2)
+    mov dx, 0x03C8
+    mov al, 0x0E
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 52
+    out dx, al
+    mov al, 43
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x0F: Yellow-gold (RGB: 52, 42, 2)
+    mov dx, 0x03C8
+    mov al, 0x0F
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 52
+    out dx, al
+    mov al, 42
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x10: Yellow-gold (RGB: 52, 42, 2)
+    mov dx, 0x03C8
+    mov al, 0x10
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 52
+    out dx, al
+    mov al, 42
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x11: Gold-orange (RGB: 53, 41, 2)
+    mov dx, 0x03C8
+    mov al, 0x11
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 53
+    out dx, al
+    mov al, 41
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x12: Gold-orange (RGB: 53, 41, 2)
+    mov dx, 0x03C8
+    mov al, 0x12
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 53
+    out dx, al
+    mov al, 41
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x13: Gold-orange (RGB: 53, 40, 2)
+    mov dx, 0x03C8
+    mov al, 0x13
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 53
+    out dx, al
+    mov al, 40
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x14: Gold-orange (RGB: 53, 39, 2)
+    mov dx, 0x03C8
+    mov al, 0x14
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 53
+    out dx, al
+    mov al, 39
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x15: Gold-orange (RGB: 53, 39, 2)
+    mov dx, 0x03C8
+    mov al, 0x15
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 53
+    out dx, al
+    mov al, 39
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x16: Gold-orange (RGB: 53, 38, 2)
+    mov dx, 0x03C8
+    mov al, 0x16
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 53
+    out dx, al
+    mov al, 38
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x17: Gold-orange (RGB: 53, 37, 2)
+    mov dx, 0x03C8
+    mov al, 0x17
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 53
+    out dx, al
+    mov al, 37
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x18: Gold-orange (RGB: 53, 37, 2)
+    mov dx, 0x03C8
+    mov al, 0x18
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 53
+    out dx, al
+    mov al, 37
+    out dx, al
+    mov al, 2
+    out dx, al
+
+    ; Color 0x19: Orange (RGB: 54, 36, 1)
+    mov dx, 0x03C8
+    mov al, 0x19
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 54
+    out dx, al
+    mov al, 36
+    out dx, al
+    mov al, 1
+    out dx, al
+
+    ; Color 0x1A: Orange (RGB: 54, 36, 1)
+    mov dx, 0x03C8
+    mov al, 0x1A
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 54
+    out dx, al
+    mov al, 36
+    out dx, al
+    mov al, 1
+    out dx, al
+
+    ; Color 0x1B: Orange (RGB: 54, 35, 1)
+    mov dx, 0x03C8
+    mov al, 0x1B
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 54
+    out dx, al
+    mov al, 35
+    out dx, al
+    mov al, 1
+    out dx, al
+
+    ; Color 0x1C: Orange (RGB: 54, 35, 1)
+    mov dx, 0x03C8
+    mov al, 0x1C
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 54
+    out dx, al
+    mov al, 35
+    out dx, al
+    mov al, 1
+    out dx, al
+
+    ; Color 0x1D: Orange (RGB: 54, 34, 1)
+    mov dx, 0x03C8
+    mov al, 0x1D
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 54
+    out dx, al
+    mov al, 34
+    out dx, al
+    mov al, 1
+    out dx, al
+
+    ; Color 0x1E: Orange (RGB: 54, 34, 1)
+    mov dx, 0x03C8
+    mov al, 0x1E
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 54
+    out dx, al
+    mov al, 34
+    out dx, al
+    mov al, 1
+    out dx, al
+
+    ; Color 0x1F: Orange (RGB: 54, 33, 1)
+    mov dx, 0x03C8
+    mov al, 0x1F
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 54
+    out dx, al
+    mov al, 33
+    out dx, al
+    mov al, 1
+    out dx, al
+
+    ; Color 0x20: Orange (RGB: 55, 33, 1)
+    mov dx, 0x03C8
+    mov al, 0x20
+    out dx, al
+    inc dx  ; dx = 0x03C9
+    mov al, 55
+    out dx, al
+    mov al, 33
+    out dx, al
+    mov al, 1
+    out dx, al
+
+    ; Color 0x21: Green for progress bar (RGB: 0, 50, 0)
+    mov dx, 0x03C8
+    mov al, 0x21
+    out dx, al
+    inc dx
+    mov al, 0
+    out dx, al
+    mov al, 50
+    out dx, al
+    mov al, 0
+    out dx, al
+
+    ; Color 0x22: Light green for progress (RGB: 0, 63, 0)
+    mov dx, 0x03C8
+    mov al, 0x22
+    out dx, al
+    inc dx
+    mov al, 0
+    out dx, al
+    mov al, 63
+    out dx, al
+    mov al, 0
+    out dx, al

@@ -1,0 +1,9 @@
+*.py
+*.bin
+*.raw
+*.bmp
+*.lst
+*.log
+*.img
+*.iso
+build/
