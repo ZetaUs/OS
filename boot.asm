@@ -34,7 +34,8 @@ start:
     int 0x10
     
     ; Jump to stage2 using far jump
-    jmp dword 0x0000:0x7E00
+    ; CS=0x07E0, IP=0x0000 -> Physical address = 0x07E0*16 + 0x0000 = 0x7E00
+    jmp dword 0x07E0:0x0000
 
 print_string:
     mov ah, 0x0E

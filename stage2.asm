@@ -2,6 +2,13 @@ bits 16
 org 0x7E00
 
 start:
+    ; Initialize segment registers
+    ; CS=0x07E0 from far jump, org=0x7E00, so all labels are offsets from 0x7E00
+    ; DS=0x07E0 is correct for accessing data at org-relative addresses
+    mov ax, 0x07E0
+    mov ds, ax
+    mov es, ax
+    
     ; Set video mode 0x13 (320x200, 256 colors)
     mov ax, 0x0013
     int 0x10
@@ -305,6 +312,10 @@ draw_char_8x8:
     push si
     push di
     push es
+    push ds
+    
+    ; DS=0x07E0 for org-relative address access (already set in start)
+    ; No need to change DS here
     
     ; Save original X and Y
     mov [char_x], bp
@@ -313,8 +324,12 @@ draw_char_8x8:
     ; Calculate font offset: (char - 0x20) * 8
     sub al, 0x20
     mov ah, 0
-    mov si, ax
-    shl si, 3            ; SI = (char - 0x20) * 8
+    mov bx, ax
+    shl bx, 3            ; BX = (char - 0x20) * 8
+    
+    ; SI = font_8x8 base address + offset
+    mov si, font_8x8
+    add si, bx           ; SI = font_8x8 + (char - 0x20) * 8
     
     ; Set ES to VRAM for drawing
     mov ax, 0xA000
@@ -324,7 +339,7 @@ draw_char_8x8:
     mov cx, 8
     mov [char_row], cx
 draw_char_row:
-    ; Get font byte for this row from DS:SI (DS=0x0000)
+    ; Get font byte for this row from DS:SI
     mov al, [si]
     inc si
     
@@ -368,6 +383,7 @@ next_pixel:
     dec word [char_row]
     jnz draw_char_row
     
+    pop ds
     pop es
     pop di
     pop si
@@ -393,6 +409,11 @@ draw_string_8x8:
     push si
     push di
     push bp
+    push ds
+    
+    ; DS=0x07E0 for org-relative address access
+    mov ax, 0x07E0
+    mov ds, ax
     
 draw_str_loop:
     lodsb
@@ -413,6 +434,7 @@ draw_str_loop:
     jmp draw_str_loop
     
 draw_str_done:
+    pop ds
     pop bp
     pop di
     pop si
