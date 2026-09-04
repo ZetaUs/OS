@@ -257,7 +257,7 @@ draw_rect_row:
     push cx
     
     ; Calculate VRAM offset: Y * 320 + X
-    ; BP already has Y, use it for multiplication
+    ; BP has Y, use it for multiplication
     mov ax, 320
     mul bp               ; DX:AX = 320 * Y
     add ax, cx           ; AX = Y * 320 + X
@@ -270,8 +270,8 @@ draw_rect_row:
     pop bx
     pop ax
     
-    inc bp               ; Y++
-    dec si
+    inc bp               ; Y++ (this should move to next row)
+    dec si               ; height--
     jnz draw_rect_row
     
     pop es
