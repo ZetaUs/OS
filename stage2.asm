@@ -7,38 +7,38 @@ start:
     int 0x10
     
     ; === Enable VGA Chain-4 Mode ===
-    ; This is REQUIRED for linear pixel access in mode 0x13
+    ; This is critical for linear VRAM access
     
-    ; Reset Sequencer
+    ; Step 1: Reset Sequencer
     mov dx, 0x03C4
-    mov al, 0x00
+    mov al, 0x00       ; Index: Reset
     out dx, al
     inc dx
-    mov al, 0x01
+    mov al, 0x01       ; Assert reset
     out dx, al
     
-    ; Enable Chain-4 in Sequencer Memory Mode (Index 0x04)
+    ; Step 2: Enable Chain-4 in Sequencer Memory Mode
     mov dx, 0x03C4
-    mov al, 0x04
+    mov al, 0x04       ; Index: Memory Mode
     out dx, al
     inc dx
-    mov al, 0x0E       ; Bit 3=1 (Chain4)
+    mov al, 0x0E       ; Bit 3=1 (Chain4), Bit 1=1 (ExtMem)
     out dx, al
     
-    ; Enable Chain-4 in Graphics Controller Mode (Index 0x05)
+    ; Step 3: Enable Chain-4 in Graphics Controller Mode
     mov dx, 0x03CE
-    mov al, 0x05
+    mov al, 0x05       ; Index: Mode
     out dx, al
     inc dx
-    mov al, 0x08       ; Bit 3=1 (Chain4), NOT bit 6!
+    mov al, 0x40       ; Bit 6=1 (Chain4)
     out dx, al
     
-    ; Clear Sequencer Reset
+    ; Step 4: Clear Sequencer Reset
     mov dx, 0x03C4
-    mov al, 0x00
+    mov al, 0x00       ; Index: Reset
     out dx, al
     inc dx
-    mov al, 0x03
+    mov al, 0x03       ; Deassert reset
     out dx, al
     
     ; Clear all segment registers
@@ -261,14 +261,14 @@ draw_rect:
     
 draw_rect_row:
     ; Calculate VRAM offset: Y * 320 + X
-    ; Use a simpler approach: Y * 320 = Y * 256 + Y * 64
+    ; Y is in BP
+    ; Use multiplication: Y * 320
     mov ax, bp           ; AX = Y
-    mov di, ax           ; DI = Y
-    shl di, 8            ; DI = Y * 256
-    mov dx, ax           ; DX = Y
-    shl dx, 6            ; DX = Y * 64
-    add di, dx           ; DI = Y * 320
-    add di, [rect_x]     ; DI = Y * 320 + X
+    mov bx, 320
+    mul bx               ; DX:AX = Y * 320
+    ; For Y < 205, DX will be 0
+    add ax, [rect_x]     ; AX = Y * 320 + X
+    mov di, ax
     
     ; Draw one row using rep stosb
     mov cx, [rect_width]
