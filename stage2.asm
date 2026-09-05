@@ -103,6 +103,9 @@ start:
     mov dx, 182
     call draw_string_8x8
     
+    ; Skip loading animation for now - go directly to login screen
+    jmp draw_login_screen
+    
     ; Animate loading progress
     mov cx, 0
 load_loop:
@@ -126,37 +129,23 @@ load_loop:
     cmp cx, 156
     jl load_loop
     
-    ; Debug: GREEN - HZK16 loading started
+draw_login_screen:
+    ; Draw login screen
+    ; Clear screen with dark blue
     mov ax, 0xA000
     mov es, ax
     xor di, di
     mov cx, 64000
-    mov al, 10        ; Green
+    mov al, 1
     rep stosb
     
-    ; Set DS to stage2 code segment for accessing hzk_dap
-    push cs
-    pop ds
-    
-    ; Load HZK16 using LBA extension (int 0x13 ah=0x42) - same as boot.asm
-    mov si, hzk_dap
-    mov ah, 0x42
-    mov dl, [0x0500]    ; Boot drive
-    int 0x13
-    jc hzk_load_error
-    
-    ; Debug: CYAN - HZK16 loaded successfully
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 64000
-    mov al, 11        ; Cyan
-    rep stosb
-
-hzk_chs_done:
-    ; Reset DS for subsequent operations
-    xor ax, ax
-    mov ds, ax
+    ; Debug: Draw a small white rectangle to confirm we're here
+    mov cx, 100
+    mov dx, 100
+    mov bx, 20
+    mov si, 20
+    mov al, 7          ; White
+    call draw_rect
     
     ; Draw login box
     mov cx, 20
@@ -166,17 +155,17 @@ hzk_chs_done:
     mov al, 2
     call draw_rect
     
-    ; Draw title "欢迎使用"
+    ; Draw title "Welcome"
     mov si, welcome_msg
-    mov bp, 100
+    mov bp, 110
     mov dx, 30
-    call draw_string_16x16
+    call draw_string_8x8
     
-    ; Draw "用户名:"
+    ; Draw "Username:"
     mov si, username_msg
     mov bp, 40
     mov dx, 65
-    call draw_string_16x16
+    call draw_string_8x8
     
     ; Draw username input box
     mov cx, 100
@@ -186,11 +175,11 @@ hzk_chs_done:
     mov al, 3
     call draw_rect
     
-    ; Draw "密码:"
+    ; Draw "Password:"
     mov si, password_msg
     mov bp, 40
     mov dx, 115
-    call draw_string_16x16
+    call draw_string_8x8
     
     ; Draw password input box
     mov cx, 100
@@ -208,11 +197,11 @@ hzk_chs_done:
     mov al, 6
     call draw_rect
     
-    ; Draw "登录" button text
+    ; Draw "Login" button text
     mov si, login_msg
-    mov bp, 132
+    mov bp, 136
     mov dx, 162
-    call draw_string_16x16
+    call draw_string_8x8
     
 halt_s2:
     hlt
@@ -289,6 +278,12 @@ draw_rect:
     push si
     push di
     push es
+    push ds
+    
+    ; Set DS to stage2 code segment to access variables
+    push cs
+    pop ds
+    
     mov [rect_x], cx
     mov [rect_y], dx
     mov [rect_width], bx
@@ -315,6 +310,7 @@ draw_rect_col:
     inc dx
     dec word [rect_height]
     jnz draw_rect_row
+    pop ds
     pop es
     pop di
     pop si
@@ -330,6 +326,12 @@ draw_string_8x8:
     push di
     push bp
     push es
+    push ds
+    
+    ; Set DS to stage2 code segment to access variables
+    push cs
+    pop ds
+    
     mov [str_x], bp
     mov [str_y], dx
 draw_str_loop:
@@ -346,6 +348,7 @@ draw_str_loop:
     add word [str_x], 8
     jmp draw_str_loop
 draw_str_done:
+    pop ds
     pop es
     pop bp
     pop di
@@ -374,9 +377,9 @@ draw_char_8x8:
     mov bh, 0
     shl bx, 3            ; BX = char_code * 8
     
-    ; Set DS to stage2 segment and point to font_8x8
-    mov ax, 0x1000
-    mov ds, ax
+    ; Set DS to CS (stage2 code segment) to access font_8x8
+    push cs
+    pop ds
     mov si, font_8x8     ; NASM will resolve this to correct offset
     add si, bx           ; SI = font_8x8 + offset
     
@@ -411,6 +414,7 @@ next_pixel:
     inc bx
     dec word [char_row]
     jnz draw_char_row
+    pop ds
     pop es
     pop bp
     pop di
@@ -607,15 +611,11 @@ title_msg:    db 'Nova OS', 0
 loading_msg:  db 'Loading...', 0
 test_msg:     db 'TEST', 0
 
-; GB2312 encoded Chinese strings
-; 欢迎使用 = BB B6 D3 AD CA B9 D3 C3
-welcome_msg: db 0xBB, 0xB6, 0xD3, 0xAD, 0xCA, 0xB9, 0xD3, 0xC3, 0
-; 用户名: = D3 C3 BB A7 C3 FB 3A
-username_msg: db 0xD3, 0xC3, 0xBB, 0xA7, 0xC3, 0xFB, 0x3A, 0
-; 密码: = C3 DC C2 EB 3A
-password_msg: db 0xC3, 0xDC, 0xC2, 0xEB, 0x3A, 0
-; 登录 = B5 C7 C2 BC
-login_msg: db 0xB5, 0xC7, 0xC2, 0xBC, 0
+; Login screen strings
+welcome_msg:  db 'Welcome', 0
+username_msg: db 'Username:', 0
+password_msg: db 'Password:', 0
+login_msg:    db 'Login', 0
 
 ; 8x8 font data - complete table for ASCII 0-127
 ; Each character is 8 bytes
