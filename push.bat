@@ -102,5 +102,3 @@ echo ========================================
 echo   Done! Push successful.
 echo ========================================
 echo.
-pause
-endlocal
