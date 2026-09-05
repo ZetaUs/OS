@@ -8,9 +8,11 @@ start:
     mov ss, ax
     mov sp, 0x7C00
     
+    ; Set VGA mode 0x13 (320x200, 256 colors)
     mov ax, 0x0013
     int 0x10
     
+    ; Enable chain-4 mode for linear pixel access
     mov dx, 0x03C4
     mov al, 0x00
     out dx, al
@@ -39,6 +41,7 @@ start:
     mov al, 0x03
     out dx, al
     
+    ; Clear all segment registers
     xor ax, ax
     mov ds, ax
     mov es, ax
@@ -46,72 +49,10 @@ start:
     mov gs, ax
     mov ss, ax
     
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 64000
-    mov al, 1
-    rep stosb
-    
+    ; Initialize palette
     call init_palette
     
-    ; Debug 1: Fill screen with RED
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 64000
-    mov al, 40
-    rep stosb
-    
-    ; Debug 2: Setup DAP - Fill with YELLOW
-    mov si, hzk_dap
-    mov word [si+2], 523
-    mov word [si+4], 0x0000
-    mov word [si+6], 0x1000
-    mov dword [si+8], 115
-    mov dword [si+12], 0
-    
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 64000
-    mov al, 62
-    rep stosb
-    
-    ; Debug 3: Get boot drive - Fill with CYAN
-    xor ax, ax
-    mov ds, ax
-    mov dl, [0x0500]
-    
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 64000
-    mov al, 59
-    rep stosb
-    
-    ; Debug 4: Call int 0x13 - Fill with MAGENTA before call
-    mov ah, 0x42
-    mov si, hzk_dap
-    
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 64000
-    mov al, 45
-    rep stosb
-    
-    int 0x13
-    jc hzk_load_error
-    
-    ; Success: Fill with GREEN
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 64000
-    mov al, 42
-    rep stosb
-    
+    ; Load 8x8 font to 0x8000
     xor ax, ax
     mov es, ax
     mov si, font_8x8
@@ -120,106 +61,221 @@ start:
     cld
     rep movsb
     
+    ; Reset segments
     xor ax, ax
     mov ds, ax
     mov es, ax
     
+    ; Draw loading screen background
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 64000
+    mov al, 1
+    rep stosb
+    
+    ; Draw title
     mov si, title_msg
     mov bp, 120
     mov dx, 10
     call draw_string_8x8
     
+    ; Draw progress bar background
+    mov cx, 80
+    mov dx, 160
+    mov bx, 160
+    mov si, 16
+    mov al, 5
+    call draw_rect
+    
+    ; Draw progress bar fill
+    mov cx, 82
+    mov dx, 162
+    mov bx, 0
+    mov si, 12
+    mov al, 6
+    call draw_rect
+    
+    ; Draw "Loading..." text
+    mov si, loading_msg
+    mov bp, 120
+    mov dx, 182
+    call draw_string_8x8
+    
+    ; Animate loading progress
+    mov cx, 0
+load_loop:
+    push cx
+    mov cx, 82
+    mov dx, 162
+    mov bx, 156
+    mov si, 12
+    mov al, 1
+    call draw_rect
+    pop cx
+    push cx
+    mov bx, cx
+    mov cx, 82
+    mov dx, 162
+    mov si, 12
+    mov al, 6
+    call draw_rect
+    pop cx
+    add cx, 2
+    cmp cx, 156
+    jl load_loop
+    
+    ; Debug: BLUE - about to load HZK16 using CHS
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 64000
+    mov al, 19        ; Blue color
+    rep stosb
+    
+    ; Load HZK16 using CHS addressing (int 0x13 ah=0x02)
+    ; LBA 115 = C=0, H=1, S=53 (16 heads, 63 sectors/track)
+    ; Read 523 sectors in chunks
+    
+    mov [sectors_left], word 523
+    mov [current_cyl], byte 0
+    mov [current_head], byte 1
+    mov [current_sect], byte 53
+    mov [buf_seg], word 0x1000
+    mov [buf_off], word 0x0000
+    
+read_hzk_chs:
+    cmp word [sectors_left], 0
+    je hzk_chs_done
+    
+    ; Calculate sectors to read this time (max 18 per call)
+    mov ax, [sectors_left]
+    cmp ax, 18
+    jle read_all_remaining
+    mov ax, 18
+read_all_remaining:
+    mov [to_read], al
+    
+    ; Setup for int 0x13 ah=0x02
+    mov ah, 0x02        ; Read sectors
+    mov al, [to_read]   ; Number of sectors
+    mov dl, [0x0500]    ; Boot drive
+    mov dh, [current_head]
+    mov ch, [current_cyl]
+    mov cl, [current_sect]
+    
+    ; Buffer address
+    mov es, [buf_seg]
+    mov bx, [buf_off]
+    
+    int 0x13
+    jc hzk_load_error
+    
+    ; Update sector count
+    sub word [sectors_left], ax
+    
+    ; Update CHS position
+    mov al, [current_sect]
+    add al, [to_read]
+    mov [current_sect], al
+    
+chs_check_sect:
+    cmp byte [current_sect], 64
+    jl chs_update_buf
+    sub byte [current_sect], 63
+    inc byte [current_head]
+    
+chs_check_head:
+    cmp byte [current_head], 16
+    jl chs_update_buf
+    sub byte [current_head], 16
+    inc byte [current_cyl]
+    
+chs_update_buf:
+    ; Update buffer: add (to_read * 512) to ES:BX
+    mov al, [to_read]
+    mov ah, 0
+    mov bx, 512
+    mul bx              ; AX = to_read * 512
+    add [buf_off], ax
+    adc word [buf_seg], 0
+    
+    jmp read_hzk_chs
+
+hzk_chs_done:
+    ; HZK loaded successfully, now draw Chinese login screen
+    ; Clear screen with dark blue
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 64000
+    mov al, 1
+    rep stosb
+    
+    ; DEBUG: Test HZK16 data - copy first 32 bytes to screen center
     mov ax, 0x1000
     mov ds, ax
+    mov si, 0          ; HZK16 start
+    mov ax, 0xA000
+    mov es, ax
+    mov di, 320*90 + 100  ; Center of screen
+    mov cx, 32         ; One character's data
+    rep movsb
     
-    mov si, welcome_msg
-    mov bp, 104
-    mov dx, 28
-    call draw_string_16x16
-    
-    xor ax, ax
-    mov ds, ax
-    mov cx, 60
-    mov dx, 165
-    mov bx, 200
-    mov si, 14
+    ; Draw login box
+    mov cx, 20
+    mov dx, 20
+    mov bx, 280
+    mov si, 160
     mov al, 2
     call draw_rect
     
-    mov word [load_width], 0
-load_loop:
-    xor ax, ax
-    mov ds, ax
-    mov cx, 60
-    mov dx, 165
-    mov bx, [load_width]
-    mov si, 14
-    mov al, 3
-    call draw_rect
-    add word [load_width], 4
-    cmp word [load_width], 200
-    jb load_loop
-    
-    mov ax, 0x1000
-    mov ds, ax
-    mov si, loading_msg
-    mov bp, 112
-    mov dx, 182
+    ; Draw title "欢迎使用"
+    mov si, welcome_msg
+    mov bp, 100
+    mov dx, 30
     call draw_string_16x16
     
-    xor ax, ax
-    mov ds, ax
-    mov cx, 30
-    mov dx, 55
-    mov bx, 260
-    mov si, 120
-    mov al, 4
-    call draw_rect
-    
-    mov ax, 0x1000
-    mov ds, ax
+    ; Draw "用户名:"
     mov si, username_msg
     mov bp, 40
     mov dx, 65
     call draw_string_16x16
     
-    xor ax, ax
-    mov ds, ax
-    mov cx, 40
-    mov dx, 85
-    mov bx, 240
-    mov si, 20
-    mov al, 5
+    ; Draw username input box
+    mov cx, 100
+    mov dx, 60
+    mov bx, 160
+    mov si, 16
+    mov al, 3
     call draw_rect
     
-    mov ax, 0x1000
-    mov ds, ax
+    ; Draw "密码:"
     mov si, password_msg
-    mov bp, 48
+    mov bp, 40
     mov dx, 115
     call draw_string_16x16
     
-    xor ax, ax
-    mov ds, ax
-    mov cx, 40
-    mov dx, 135
-    mov bx, 240
-    mov si, 20
-    mov al, 5
+    ; Draw password input box
+    mov cx, 100
+    mov dx, 110
+    mov bx, 160
+    mov si, 16
+    mov al, 3
     call draw_rect
     
+    ; Draw login button
     mov cx, 110
-    mov dx, 165
+    mov dx, 155
     mov bx, 100
     mov si, 24
     mov al, 6
     call draw_rect
     
-    mov ax, 0x1000
-    mov ds, ax
+    ; Draw "登录" button text
     mov si, login_msg
-    mov bp, 142
-    mov dx, 170
+    mov bp, 132
+    mov dx, 162
     call draw_string_16x16
     
 halt_s2:
@@ -227,6 +283,13 @@ halt_s2:
     jmp halt_s2
 
 hzk_load_error:
+    ; Show error - red screen
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 64000
+    mov al, 40
+    rep stosb
     hlt
     jmp halt_s2
 
@@ -237,98 +300,48 @@ init_palette:
     push bx
     push cx
     push dx
-    
     mov dx, 0x03C8
     mov al, 0
     out dx, al
     inc dx
-    
     xor al, al
     out dx, al
     out dx, al
     out dx, al
-    
     xor al, al
     out dx, al
     xor al, al
     out dx, al
     mov al, 42
     out dx, al
-    
     mov al, 32
     out dx, al
+    mov al, 32
     out dx, al
-    out dx, al
-    
     mov al, 21
     out dx, al
     mov al, 42
     out dx, al
     mov al, 63
     out dx, al
-    
     mov al, 21
     out dx, al
     out dx, al
     out dx, al
-    
     mov al, 42
     out dx, al
     out dx, al
     out dx, al
-    
     xor al, al
     out dx, al
     xor al, al
     out dx, al
     mov al, 63
     out dx, al
-    
     mov al, 63
     out dx, al
     out dx, al
     out dx, al
-    
-    ; Color 40: Red (debug)
-    mov al, 40
-    out dx, al
-    xor al, al
-    out dx, al
-    xor al, al
-    out dx, al
-    
-    ; Color 42: Green (debug)
-    xor al, al
-    out dx, al
-    mov al, 63
-    out dx, al
-    xor al, al
-    out dx, al
-    
-    ; Color 62: Yellow (debug)
-    mov al, 63
-    out dx, al
-    mov al, 63
-    out dx, al
-    xor al, al
-    out dx, al
-    
-    ; Color 45: Magenta (debug)
-    mov al, 63
-    out dx, al
-    xor al, al
-    out dx, al
-    mov al, 63
-    out dx, al
-    
-    ; Color 59: Cyan (debug)
-    mov al, 63
-    out dx, al
-    mov al, 63
-    out dx, al
-    mov al, 63
-    out dx, al
-    
     pop dx
     pop cx
     pop bx
@@ -340,48 +353,135 @@ draw_rect:
     push si
     push di
     push es
-    
     mov [rect_x], cx
     mov [rect_y], dx
     mov [rect_width], bx
     mov [rect_height], si
     mov [rect_color], al
-    
     mov ax, 0xA000
     mov es, ax
-    
-    mov bp, dx
-    mov si, [rect_height]
-    
+    mov dx, [rect_y]
 draw_rect_row:
-    mov ax, bp
-    mov bx, 320
-    mul bx
-    add ax, [rect_x]
+    mov cx, [rect_x]
+    mov bx, [rect_width]
+draw_rect_col:
+    push dx
+    mov ax, 320
+    mul dx
+    pop dx
+    add ax, cx
     mov di, ax
-    
-    mov cx, [rect_width]
     mov al, [rect_color]
-    rep stosb
-    
-    inc bp
-    dec si
+    stosb
+    inc cx
+    dec bx
+    jnz draw_rect_col
+    inc dx
+    dec word [rect_height]
     jnz draw_rect_row
-    
     pop es
     pop di
     pop si
     pop bp
     ret
 
-rect_x: dw 0
-rect_y: dw 0
-rect_width: dw 0
-rect_height: dw 0
-rect_color: db 0
-
-draw_char_16x16:
+draw_string_8x8:
     push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    push es
+    mov [str_x], bp
+    mov [str_y], dx
+draw_str_loop:
+    lodsb
+    test al, al
+    jz draw_str_done
+    push ax
+    push si
+    mov bp, [str_x]
+    mov dx, [str_y]
+    call draw_char_8x8
+    pop si
+    pop ax
+    add word [str_x], 8
+    jmp draw_str_loop
+draw_str_done:
+    pop es
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+draw_char_8x8:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    push es
+    mov [char_x], bp
+    mov [char_y], dx
+    mov bl, al
+    mov bh, 0
+    shl bx, 3
+    add bx, 0x8000
+    mov si, bx
+    mov ax, 0xA000
+    mov es, ax
+    mov cx, 8
+    mov [char_row], cx
+    xor bx, bx
+draw_char_row:
+    mov al, [si]
+    inc si
+    mov dx, [char_y]
+    add dx, bx
+    mov bp, dx
+    mov ax, 320
+    mul bp
+    mov di, ax
+    add di, [char_x]
+    mov cx, 8
+    mov dl, al
+draw_char_pixel:
+    test dl, 0x80
+    jz skip_pixel
+    mov al, 7
+    stosb
+    jmp next_pixel
+skip_pixel:
+    inc di
+next_pixel:
+    shl dl, 1
+    loop draw_char_pixel
+    inc bx
+    dec word [char_row]
+    jnz draw_char_row
+    pop es
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; Draw 16x16 Chinese character from HZK16
+; Input: AL = high byte (区号), AH = low byte (位号)
+;        BP = X position
+;        DX = Y position
+draw_char_16x16:
     push bx
     push cx
     push dx
@@ -391,58 +491,64 @@ draw_char_16x16:
     push es
     push ds
     
+    ; Save X and Y
     mov [char16_x], bp
     mov [char16_y], dx
     
-    mov al, [si]
-    mov ah, [si+1]
+    ; Calculate HZK16 offset from GB2312 code (AL=high/区号, AH=low/位号)
+    ; Save original values
+    mov bl, al           ; BL = 区号
+    mov bh, ah           ; BH = 位号
     
-    sub al, 0xA1
-    sub ah, 0xA1
+    sub bl, 0xA1         ; 区号 - 0xA1
+    sub bh, 0xA1         ; 位号 - 0xA1
     
-    mov bl, al
-    mov bh, 0
+    mov al, bl           ; AL = 区号
+    mov ah, 0
     mov cx, 94
-    mul cx
-    add ax, bx
+    mul cx               ; AX = 区号 * 94
+    mov bl, bh           ; BL = 位号
+    mov bh, 0
+    add ax, bx           ; AX = 区号 * 94 + 位号
     
-    shl ax, 5
+    shl ax, 5            ; AX = offset in HZK16 (each char is 32 bytes)
     
+    ; Set DS to HZK16 segment
+    mov dx, 0x1000
+    mov ds, dx
     mov si, ax
     
+    ; Set ES to VRAM
     mov ax, 0xA000
     mov es, ax
     
+    ; Draw 16 rows
     mov cx, 16
     mov [char16_row], cx
-    xor bx, bx
-    
+    xor bx, bx           ; Row counter
 draw_char16_row:
-    push ds
-    mov dx, 0x1000
-    mov ds, dx
-    
+    ; Read 2 bytes from HZK16
     mov al, [si]
     mov ah, [si+1]
     add si, 2
     
-    pop ds
-    
+    ; Calculate VRAM offset for this row
     mov dx, [char16_y]
     add dx, bx
     
     mov bp, dx
     mov ax, 320
-    mul bp
-    mov di, ax
-    add di, [char16_x]
+    mul bp               ; DX:AX = 320 * Y, but we only need AX for 320x200 screen
+    mov di, ax           ; DI = low 16 bits of result (offset in VRAM)
+    add di, [char16_x]   ; Add X offset
     
+    ; Draw first byte (8 pixels)
     mov cx, 8
     mov dl, al
 draw_char16_pixel1:
     test dl, 0x80
     jz skip_pixel1
-    mov al, 7
+    mov al, 7            ; White
     stosb
     jmp next_pixel1
 skip_pixel1:
@@ -451,12 +557,13 @@ next_pixel1:
     shl dl, 1
     loop draw_char16_pixel1
     
+    ; Draw second byte (8 pixels)
     mov cx, 8
     mov dl, ah
 draw_char16_pixel2:
     test dl, 0x80
     jz skip_pixel2
-    mov al, 7
+    mov al, 7            ; White
     stosb
     jmp next_pixel2
 skip_pixel2:
@@ -477,290 +584,109 @@ next_pixel2:
     pop dx
     pop cx
     pop bx
-    pop ax
     ret
 
-char16_x: dw 0
-char16_y: dw 0
-char16_row: dw 0
-
+; Draw 16x16 Chinese string
+; Input: SI = pointer to GB2312 encoded string
+;        BP = X position
+;        DX = Y position
 draw_string_16x16:
-    push ax
     push bx
     push cx
     push dx
-    push si
     push di
     push bp
-    push ds
-    
+    push es
+    mov [str16_x], bp
+    mov [str16_y], dx
 draw_str16_loop:
     lodsb
     test al, al
     jz draw_str16_done
-    
-    cmp al, 0xA0
-    jb draw_str16_ascii
-    
-    dec si
-    push si
-    
+    mov ah, [si]         ; Get second byte
+    inc si               ; Advance past second byte
+    ; AL = high byte, AH = low byte - ready for draw_char_16x16
+    push si              ; Save string pointer
+    mov bp, [str16_x]
+    mov dx, [str16_y]
     call draw_char_16x16
-    
-    pop si
-    add si, 2
-    add bp, 16
+    pop si               ; Restore string pointer
+    add word [str16_x], 16
     jmp draw_str16_loop
-    
-draw_str16_ascii:
-    add bp, 8
-    jmp draw_str16_loop
-    
 draw_str16_done:
-    pop ds
+    pop es
     pop bp
     pop di
-    pop si
     pop dx
     pop cx
     pop bx
-    pop ax
     ret
 
-draw_char_8x8:
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-    push es
-    push ds
-    
-    xor ax, ax
-    mov ds, ax
-    
-    mov [char_x], bp
-    mov [char_y], dx
-    
-    sub al, 0x20
-    mov ah, 0
-    mov bx, ax
-    shl bx, 3
-    
-    mov si, 0x8000
-    add si, bx
-    
-    mov ax, 0xA000
-    mov es, ax
-    
-    mov cx, 8
-    mov [char_row], cx
-draw_char_row:
-    mov al, [si]
-    inc si
-    
-    mov dx, [char_y]
-    mov ax, 8
-    sub ax, [char_row]
-    add dx, ax
-    
-    mov bp, dx
-    mov ax, 320
-    mul bp
-    mov di, ax
-    add di, [char_x]
-    
-    mov cx, 8
-draw_char_pixel:
-    push cx
-    push ax
-    
-    test al, 0x80
-    jz skip_pixel
-    
-    mov al, 7
-    stosb
-    jmp next_pixel
-    
-skip_pixel:
-    inc di
-    
-next_pixel:
-    pop ax
-    pop cx
-    
-    shl al, 1
-    loop draw_char_pixel
-    
-    dec word [char_row]
-    jnz draw_char_row
-    
-    pop ds
-    pop es
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-
+; Variables
+rect_x: dw 0
+rect_y: dw 0
+rect_width: dw 0
+rect_height: dw 0
+rect_color: db 0
+str_x: dw 0
+str_y: dw 0
 char_x: dw 0
 char_y: dw 0
 char_row: dw 0
+char16_x: dw 0
+char16_y: dw 0
+char16_row: dw 0
+str16_x: dw 0
+str16_y: dw 0
 
-draw_string_8x8:
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-    push bp
-    push ds
-    
-    xor ax, ax
-    mov ds, ax
-    
-draw_str_loop:
-    lodsb
-    test al, al
-    jz draw_str_done
-    
-    push si
-    push bp
-    push dx
-    
-    call draw_char_8x8
-    
-    pop dx
-    pop bp
-    add bp, 8
-    pop si
-    
-    jmp draw_str_loop
-    
-draw_str_done:
-    pop ds
-    pop bp
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
+; CHS reading variables
+sectors_left: dw 0
+current_cyl: db 0
+current_head: db 0
+current_sect: db 0
+buf_seg: dw 0
+buf_off: dw 0
+to_read: db 0
 
-font_8x8:
-    db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    db 0x18, 0x18, 0x18, 0x18, 0x18, 0x00, 0x18, 0x00
-    db 0x18, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    db 0x00, 0x24, 0x7E, 0x24, 0x24, 0x7E, 0x24, 0x00
-    db 0x18, 0x3E, 0x40, 0x3C, 0x06, 0x7C, 0x18, 0x00
-    db 0x00, 0x62, 0x64, 0x08, 0x10, 0x26, 0x46, 0x00
-    db 0x1C, 0x22, 0x22, 0x1C, 0x2A, 0x44, 0x3A, 0x00
-    db 0x18, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    db 0x0C, 0x18, 0x30, 0x30, 0x30, 0x18, 0x0C, 0x00
-    db 0x30, 0x18, 0x0C, 0x0C, 0x0C, 0x18, 0x30, 0x00
-    db 0x00, 0x08, 0x3E, 0x1C, 0x1C, 0x3E, 0x08, 0x00
-    db 0x00, 0x08, 0x08, 0x3E, 0x08, 0x08, 0x00, 0x00
-    db 0x00, 0x00, 0x00, 0x00, 0x18, 0x18, 0x08, 0x00
-    db 0x00, 0x00, 0x00, 0x3E, 0x00, 0x00, 0x00, 0x00
-    db 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x18, 0x00
-    db 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x40, 0x00
-    db 0x1C, 0x22, 0x26, 0x2A, 0x32, 0x22, 0x1C, 0x00
-    db 0x18, 0x38, 0x18, 0x18, 0x18, 0x18, 0x3C, 0x00
-    db 0x1C, 0x22, 0x04, 0x08, 0x10, 0x20, 0x3E, 0x00
-    db 0x3C, 0x06, 0x0C, 0x08, 0x0C, 0x06, 0x3C, 0x00
-    db 0x08, 0x18, 0x28, 0x48, 0x7E, 0x08, 0x08, 0x00
-    db 0x3E, 0x20, 0x3C, 0x06, 0x06, 0x26, 0x1C, 0x00
-    db 0x1C, 0x20, 0x3C, 0x26, 0x26, 0x26, 0x1C, 0x00
-    db 0x3E, 0x04, 0x08, 0x10, 0x10, 0x10, 0x10, 0x00
-    db 0x1C, 0x26, 0x26, 0x1C, 0x26, 0x26, 0x1C, 0x00
-    db 0x1C, 0x26, 0x26, 0x1E, 0x06, 0x0C, 0x18, 0x00
-    db 0x00, 0x18, 0x18, 0x00, 0x18, 0x18, 0x00, 0x00
-    db 0x00, 0x18, 0x18, 0x00, 0x18, 0x18, 0x08, 0x00
-    db 0x04, 0x08, 0x10, 0x20, 0x10, 0x08, 0x04, 0x00
-    db 0x00, 0x00, 0x3E, 0x00, 0x3E, 0x00, 0x00, 0x00
-    db 0x20, 0x10, 0x08, 0x04, 0x08, 0x10, 0x20, 0x00
-    db 0x1C, 0x26, 0x06, 0x0C, 0x18, 0x00, 0x18, 0x00
-    db 0x1C, 0x26, 0x26, 0x2E, 0x2A, 0x20, 0x1C, 0x00
-    db 0x18, 0x24, 0x24, 0x3C, 0x42, 0x42, 0x42, 0x00
-    db 0x3C, 0x22, 0x22, 0x3C, 0x22, 0x22, 0x3C, 0x00
-    db 0x1C, 0x26, 0x40, 0x40, 0x40, 0x26, 0x1C, 0x00
-    db 0x38, 0x24, 0x22, 0x22, 0x22, 0x24, 0x38, 0x00
-    db 0x3E, 0x20, 0x20, 0x38, 0x20, 0x20, 0x3E, 0x00
-    db 0x3E, 0x20, 0x20, 0x38, 0x20, 0x20, 0x20, 0x00
-    db 0x1C, 0x26, 0x40, 0x40, 0x4E, 0x26, 0x1E, 0x00
-    db 0x42, 0x42, 0x42, 0x7E, 0x42, 0x42, 0x42, 0x00
-    db 0x3C, 0x18, 0x18, 0x18, 0x18, 0x18, 0x3C, 0x00
-    db 0x1E, 0x0C, 0x0C, 0x0C, 0x0C, 0x4C, 0x38, 0x00
-    db 0x44, 0x48, 0x50, 0x60, 0x50, 0x48, 0x44, 0x00
-    db 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x3E, 0x00
-    db 0x42, 0x66, 0x5A, 0x5A, 0x42, 0x42, 0x42, 0x00
-    db 0x42, 0x62, 0x52, 0x4A, 0x46, 0x42, 0x42, 0x00
-    db 0x1C, 0x26, 0x42, 0x42, 0x42, 0x26, 0x1C, 0x00
-    db 0x3C, 0x22, 0x22, 0x3C, 0x20, 0x20, 0x20, 0x00
-    db 0x1C, 0x26, 0x42, 0x42, 0x4A, 0x2C, 0x16, 0x00
-    db 0x3C, 0x22, 0x22, 0x3C, 0x28, 0x24, 0x42, 0x00
-    db 0x1E, 0x20, 0x20, 0x1C, 0x06, 0x06, 0x3C, 0x00
-    db 0x7E, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x00
-    db 0x42, 0x42, 0x42, 0x42, 0x42, 0x26, 0x1C, 0x00
-    db 0x42, 0x42, 0x42, 0x24, 0x24, 0x18, 0x18, 0x00
-    db 0x42, 0x42, 0x42, 0x5A, 0x5A, 0x66, 0x42, 0x00
-    db 0x42, 0x24, 0x18, 0x18, 0x18, 0x24, 0x42, 0x00
-    db 0x42, 0x24, 0x18, 0x18, 0x18, 0x18, 0x18, 0x00
-    db 0x3E, 0x04, 0x08, 0x10, 0x20, 0x40, 0x3E, 0x00
-    db 0x3C, 0x20, 0x20, 0x20, 0x20, 0x20, 0x3C, 0x00
-    db 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x02, 0x00
-    db 0x3C, 0x04, 0x04, 0x04, 0x04, 0x04, 0x3C, 0x00
-    db 0x18, 0x24, 0x42, 0x00, 0x00, 0x00, 0x00, 0x00
-    db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF
-    db 0x18, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    db 0x00, 0x00, 0x1C, 0x06, 0x1E, 0x26, 0x1E, 0x00
-    db 0x20, 0x20, 0x38, 0x24, 0x24, 0x24, 0x38, 0x00
-    db 0x00, 0x00, 0x1C, 0x20, 0x20, 0x20, 0x1C, 0x00
-    db 0x06, 0x06, 0x1E, 0x26, 0x26, 0x26, 0x1E, 0x00
-    db 0x00, 0x00, 0x1C, 0x26, 0x3E, 0x20, 0x1C, 0x00
-    db 0x0C, 0x18, 0x18, 0x3C, 0x18, 0x18, 0x18, 0x00
-    db 0x00, 0x00, 0x1E, 0x26, 0x26, 0x1E, 0x06, 0x3C
-    db 0x20, 0x20, 0x38, 0x24, 0x24, 0x24, 0x24, 0x00
-    db 0x18, 0x00, 0x38, 0x18, 0x18, 0x18, 0x3C, 0x00
-    db 0x0C, 0x00, 0x1C, 0x0C, 0x0C, 0x0C, 0x0C, 0x38
-    db 0x20, 0x20, 0x24, 0x28, 0x30, 0x28, 0x24, 0x00
-    db 0x38, 0x18, 0x18, 0x18, 0x18, 0x18, 0x3C, 0x00
-    db 0x00, 0x00, 0x36, 0x5A, 0x5A, 0x5A, 0x42, 0x00
-    db 0x00, 0x00, 0x38, 0x24, 0x24, 0x24, 0x24, 0x00
-    db 0x00, 0x00, 0x1C, 0x26, 0x26, 0x26, 0x1C, 0x00
-    db 0x00, 0x00, 0x38, 0x24, 0x24, 0x38, 0x20, 0x20
-    db 0x00, 0x00, 0x1E, 0x26, 0x26, 0x1E, 0x06, 0x06
-    db 0x00, 0x00, 0x38, 0x24, 0x20, 0x20, 0x20, 0x00
-    db 0x00, 0x00, 0x1E, 0x20, 0x1C, 0x06, 0x3C, 0x00
-    db 0x10, 0x10, 0x3C, 0x10, 0x10, 0x10, 0x0C, 0x00
-    db 0x00, 0x00, 0x24, 0x24, 0x24, 0x26, 0x1A, 0x00
-    db 0x00, 0x00, 0x42, 0x42, 0x24, 0x24, 0x18, 0x00
-    db 0x00, 0x00, 0x42, 0x42, 0x5A, 0x5A, 0x24, 0x00
-    db 0x00, 0x00, 0x42, 0x24, 0x18, 0x24, 0x42, 0x00
-    db 0x00, 0x00, 0x42, 0x24, 0x24, 0x1E, 0x06, 0x3C
-    db 0x00, 0x00, 0x3E, 0x0C, 0x18, 0x30, 0x3E, 0x00
-    db 0x0C, 0x18, 0x18, 0x30, 0x18, 0x18, 0x0C, 0x00
-    db 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x00
-    db 0x30, 0x18, 0x18, 0x0C, 0x18, 0x18, 0x30, 0x00
-    db 0x00, 0x00, 0x08, 0x54, 0x20, 0x00, 0x00, 0x00
-
-title_msg:    db 'Nova OS', 0
-welcome_msg:  db 0xBB, 0xB6, 0xD3, 0xAD, 0xCA, 0xB9, 0xD3, 0xC3, 0
-loading_msg:  db 0xBC, 0xD3, 0xD4, 0xD8, 0xD6, 0xD0, 0
-username_msg: db 0xD3, 0xC3, 0xBB, 0xA7, 0xC3, 0xFB, 0
-password_msg: db 0xC3, 0xDC, 0xC2, 0xEB, 0
-login_msg:    db 0xB5, 0xC7, 0xC2, 0xBC, 0
-
+; DAP structure for HZK16 loading
 hzk_dap:
-    db 0x10
-    db 0
-    dw 0
-    dw 0
-    dw 0
-    dd 0
-    dd 0
+    db 0x10        ; DAP size (16 bytes)
+    db 0           ; Reserved
+    dw 523         ; Sector count
+    dw 0x0000      ; Buffer offset
+    dw 0x1000      ; Buffer segment
+    dd 115         ; LBA low
+    dd 0           ; LBA high
+
+; ASCII strings
+title_msg:    db 'Nova OS', 0
+loading_msg:  db 'Loading...', 0
+
+; GB2312 encoded Chinese strings
+; 欢迎使用 = BB B6 D3 AD CA B9 D3 C3
+welcome_msg: db 0xBB, 0xB6, 0xD3, 0xAD, 0xCA, 0xB9, 0xD3, 0xC3, 0
+; 用户名: = D3 C3 BB A7 C3 FB 3A
+username_msg: db 0xD3, 0xC3, 0xBB, 0xA7, 0xC3, 0xFB, 0x3A, 0
+; 密码: = C3 DC C2 EB 3A
+password_msg: db 0xC3, 0xDC, 0xC2, 0xEB, 0x3A, 0
+; 登录 = B5 C7 C2 BC
+login_msg: db 0xB5, 0xC7, 0xC2, 0xBC, 0
+
+; 8x8 font data (partial)
+font_8x8:
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x18,0x3C,0x3C,0x18,0x00,0x00
+    db 0x00,0x18,0x18,0x7E,0x7E,0x18,0x18,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    db 0x00
