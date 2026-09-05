@@ -2,6 +2,7 @@ bits 16
 org 0x7E00
 
 start:
+    ; Set DS to stage2 segment (0x0000 since org 0x7E00)
     xor ax, ax
     mov ds, ax
     mov es, ax
@@ -133,6 +134,10 @@ load_loop:
     mov al, 10        ; Green
     rep stosb
     
+    ; Set DS to stage2 code segment for accessing hzk_dap
+    push cs
+    pop ds
+    
     ; Load HZK16 using LBA extension (int 0x13 ah=0x42) - same as boot.asm
     mov si, hzk_dap
     mov ah, 0x42
@@ -149,14 +154,9 @@ load_loop:
     rep stosb
 
 hzk_chs_done:
-    ; HZK loaded successfully, now draw Chinese login screen
-    ; Clear screen with dark blue
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 64000
-    mov al, 1
-    rep stosb
+    ; Reset DS for subsequent operations
+    xor ax, ax
+    mov ds, ax
     
     ; Draw login box
     mov cx, 20
