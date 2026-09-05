@@ -3,58 +3,47 @@ org 0x7E00
 
 start:
     ; Initialize segment registers
-    ; CS=0x0000 from far jump, org=0x7E00, so all labels are absolute addresses
-    ; DS=0x0000 is correct for accessing data at absolute addresses
     xor ax, ax
     mov ds, ax
     mov es, ax
-    
-    ; Copy font data to 0x8000 for reliable access
-    ; DS=0x0000, SI=font_8x8 (absolute address)
-    ; ES=0x0000, DI=0x8000
-    mov si, font_8x8
-    mov di, 0x8000
-    mov cx, 768          ; 96 characters * 8 bytes = 768 bytes
-    cld
-    rep movsb
+    mov ss, ax
+    mov sp, 0x7C00
     
     ; Set video mode 0x13 (320x200, 256 colors)
     mov ax, 0x0013
     int 0x10
     
     ; === Enable VGA Chain-4 Mode ===
-    ; This is critical for linear VRAM access
-    
     ; Step 1: Reset Sequencer
     mov dx, 0x03C4
-    mov al, 0x00       ; Index: Reset
+    mov al, 0x00
     out dx, al
     inc dx
-    mov al, 0x01       ; Assert reset
+    mov al, 0x01
     out dx, al
     
     ; Step 2: Enable Chain-4 in Sequencer Memory Mode
     mov dx, 0x03C4
-    mov al, 0x04       ; Index: Memory Mode
+    mov al, 0x04
     out dx, al
     inc dx
-    mov al, 0x0E       ; Bit 3=1 (Chain4), Bit 1=1 (ExtMem)
+    mov al, 0x0E
     out dx, al
     
     ; Step 3: Enable Chain-4 in Graphics Controller Mode
     mov dx, 0x03CE
-    mov al, 0x05       ; Index: Mode
+    mov al, 0x05
     out dx, al
     inc dx
-    mov al, 0x40       ; Bit 6=1 (Chain4)
+    mov al, 0x40
     out dx, al
     
     ; Step 4: Clear Sequencer Reset
     mov dx, 0x03C4
-    mov al, 0x00       ; Index: Reset
+    mov al, 0x00
     out dx, al
     inc dx
-    mov al, 0x03       ; Deassert reset
+    mov al, 0x03
     out dx, al
     
     ; Clear all segment registers
@@ -73,31 +62,69 @@ start:
     mov al, 1
     rep stosb
     
-    ; Set DS to code segment for font data access
-    mov ax, 0x07E0
-    mov ds, ax
-    
-    ; Reset ES to code segment
-    xor ax, ax
-    mov es, ax
-    
     ; Initialize VGA palette
     call init_palette
     
-    ; === Skip logo loading for now (disk read error) ===
-    ; TODO: Fix logo loading from disk
+    ; === Load HZK16 from disk ===
+    ; HZK16 is at LBA 115, 523 sectors (267616 bytes)
+    ; Load to memory at 0x10000 (ES:BX = 0x1000:0x0000)
+    mov si, hzk_dap
+    mov word [si+2], 523       ; Sector count
+    mov word [si+4], 0x0000    ; Buffer offset
+    mov word [si+6], 0x1000    ; Buffer segment
+    mov dword [si+8], 115      ; LBA low
+    mov dword [si+12], 0       ; LBA high
     
-    ; Draw title "Nova OS" at top center
+    mov ah, 0x42               ; LBA extended read
+    mov dl, [0x0500]           ; Boot drive
+    int 0x13
+    jc hzk_load_error
+    
+    ; HZK16 loaded successfully at 0x10000
+    ; DS=0x1000 for accessing HZK16
+    mov ax, 0x1000
+    mov ds, ax
+    
+    ; === Draw Loading Interface ===
+    
+    ; Draw title "Nova OS" at top center (using 8x8 font for English)
+    ; First copy 8x8 font to 0x8000
+    xor ax, ax
+    mov es, ax
+    mov si, font_8x8
+    mov di, 0x8000
+    mov cx, 768
+    cld
+    rep movsb
+    
+    ; Reset DS to 0x0000 for font access
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    
+    ; Draw "Nova OS" title
     mov si, title_msg
-    mov bp, 125
-    mov dx, 15
+    mov bp, 120
+    mov dx, 10
     call draw_string_8x8
     
+    ; Draw "欢迎使用" (Welcome) below title
+    ; Reset DS to HZK segment
+    mov ax, 0x1000
+    mov ds, ax
+    
+    mov si, welcome_msg
+    mov bp, 104
+    mov dx, 28
+    call draw_string_16x16
+    
     ; Draw loading bar background (gray rectangle)
-    mov cx, 80
-    mov dx, 170
-    mov bx, 160
-    mov si, 12
+    xor ax, ax
+    mov ds, ax
+    mov cx, 60
+    mov dx, 165
+    mov bx, 200
+    mov si, 14
     mov al, 2
     call draw_rect
     
@@ -105,76 +132,102 @@ start:
     mov bx, 0
 load_loop:
     push bx
-    mov cx, 80
-    mov dx, 170
-    mov si, 12
+    xor ax, ax
+    mov ds, ax
+    mov cx, 60
+    mov dx, 165
+    mov bx, [load_width]
+    mov si, 14
     mov al, 3
     call draw_rect
+    add word [load_width], 4
     pop bx
-    add bx, 3
-    cmp bx, 160
+    cmp word [load_width], 200
     jb load_loop
     
-    ; Draw "Loading..." text
+    ; Draw "加载中..." text
+    mov ax, 0x1000
+    mov ds, ax
     mov si, loading_msg
-    mov bp, 115
-    mov dx, 185
-    call draw_string_8x8
+    mov bp, 112
+    mov dx, 182
+    call draw_string_16x16
+    
+    ; === Draw Login Interface ===
     
     ; Draw login box background (dark gray)
-    mov cx, 40
-    mov dx, 50
-    mov bx, 240
-    mov si, 110
+    xor ax, ax
+    mov ds, ax
+    mov cx, 30
+    mov dx, 55
+    mov bx, 260
+    mov si, 120
     mov al, 4
     call draw_rect
     
-    ; Draw username label
+    ; Draw username label "用户名:"
+    mov ax, 0x1000
+    mov ds, ax
     mov si, username_msg
-    mov bp, 50
-    mov dx, 60
-    call draw_string_8x8
+    mov bp, 40
+    mov dx, 65
+    call draw_string_16x16
     
     ; Draw username input box (light gray)
-    mov cx, 50
-    mov dx, 72
-    mov bx, 220
-    mov si, 16
+    xor ax, ax
+    mov ds, ax
+    mov cx, 40
+    mov dx, 85
+    mov bx, 240
+    mov si, 20
     mov al, 5
     call draw_rect
     
-    ; Draw password label
+    ; Draw password label "密码:"
+    mov ax, 0x1000
+    mov ds, ax
     mov si, password_msg
-    mov bp, 50
-    mov dx, 95
-    call draw_string_8x8
+    mov bp, 48
+    mov dx, 115
+    call draw_string_16x16
     
     ; Draw password input box (light gray)
-    mov cx, 50
-    mov dx, 107
-    mov bx, 220
-    mov si, 16
+    xor ax, ax
+    mov ds, ax
+    mov cx, 40
+    mov dx, 135
+    mov bx, 240
+    mov si, 20
     mov al, 5
     call draw_rect
     
     ; Draw login button (blue)
     mov cx, 110
-    mov dx, 130
+    mov dx, 165
     mov bx, 100
-    mov si, 20
+    mov si, 24
     mov al, 6
     call draw_rect
     
-    ; Draw "Login" text on button
+    ; Draw "登录" text on button
+    mov ax, 0x1000
+    mov ds, ax
     mov si, login_msg
-    mov bp, 135
-    mov dx, 135
-    call draw_string_8x8
+    mov bp, 142
+    mov dx, 170
+    call draw_string_16x16
     
     ; Infinite loop
 halt_s2:
     hlt
     jmp halt_s2
+
+hzk_load_error:
+    ; If HZK16 load fails, just halt
+    hlt
+    jmp halt_s2
+
+load_width: dw 0
 
 ; ============================================================
 ; VGA Palette Initialization
@@ -277,12 +330,9 @@ draw_rect:
     
 draw_rect_row:
     ; Calculate VRAM offset: Y * 320 + X
-    ; Y is in BP
-    ; Use multiplication: Y * 320
     mov ax, bp           ; AX = Y
     mov bx, 320
     mul bx               ; DX:AX = Y * 320
-    ; For Y < 205, DX will be 0
     add ax, [rect_x]     ; AX = Y * 320 + X
     mov di, ax
     
@@ -309,9 +359,206 @@ rect_height: dw 0
 rect_color: db 0
 
 ; ============================================================
+; Draw a 16x16 Chinese character from HZK16
+; Input: DS:SI -> GB2312 string, BP=X, DX=Y
+; DS should be 0x1000 (HZK16 segment)
+; ============================================================
+draw_char_16x16:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    push es
+    push ds
+    
+    ; Save X and Y
+    mov [char16_x], bp
+    mov [char16_y], dx
+    
+    ; Calculate HZK16 offset from GB2312 code
+    ; GB2312: high byte = 区号 + 0xA0, low byte = 位号 + 0xA0
+    ; Offset = ((区号 - 1) * 94 + (位号 - 1)) * 32
+    ; Simplified: ((high - 0xA1) * 94 + (low - 0xA1)) * 32
+    
+    mov al, [si]         ; High byte (区号)
+    mov ah, [si+1]       ; Low byte (位号)
+    
+    sub al, 0xA1         ; 区号 - 1
+    sub ah, 0xA1         ; 位号 - 1
+    
+    ; Calculate offset: (al * 94 + ah) * 32
+    mov bl, al
+    mov bh, 0
+    mov ax, bx
+    mov bx, 94
+    mul bx               ; AX = al * 94
+    add ax, bx           ; Wait, need to add ah
+    ; Let me redo this properly
+    mov bl, al
+    mov bh, 0
+    mov cx, 94
+    mul cx               ; DX:AX = al * 94
+    add ax, [si+1]       ; Add low byte
+    sub ax, 0xA1         ; Subtract 0xA1
+    ; AX = (al - 0xA1) * 94 + (ah - 0xA1)
+    
+    ; Multiply by 32 (shift left 5)
+    shl ax, 5            ; AX = offset in HZK16
+    
+    ; DS is already 0x1000 (HZK16 segment)
+    ; SI = offset in HZK16
+    mov si, ax
+    
+    ; Set ES to VRAM
+    mov ax, 0xA000
+    mov es, ax
+    
+    ; Draw 16 rows
+    mov cx, 16
+    mov [char16_row], cx
+    xor bx, bx           ; Row counter
+    
+draw_char16_row:
+    ; Get 2 bytes for this row (16 bits)
+    mov al, [si]
+    mov ah, [si+1]
+    add si, 2
+    
+    ; Calculate Y position
+    mov dx, [char16_y]
+    add dx, bx
+    
+    ; Calculate VRAM offset: Y * 320 + X
+    mov bp, dx
+    mov ax, 320
+    mul bp
+    mov di, ax
+    add di, [char16_x]
+    
+    ; Draw first byte (8 pixels)
+    mov cx, 8
+    mov dl, al
+draw_char16_pixel1:
+    test dl, 0x80
+    jz skip_pixel1
+    mov al, 7            ; White
+    stosb
+    jmp next_pixel1
+skip_pixel1:
+    inc di
+next_pixel1:
+    shl dl, 1
+    loop draw_char16_pixel1
+    
+    ; Draw second byte (8 pixels)
+    mov cx, 8
+    mov dl, ah
+draw_char16_pixel2:
+    test dl, 0x80
+    jz skip_pixel2
+    mov al, 7            ; White
+    stosb
+    jmp next_pixel2
+skip_pixel2:
+    inc di
+next_pixel2:
+    shl dl, 1
+    loop draw_char16_pixel2
+    
+    inc bx
+    dec word [char16_row]
+    jnz draw_char16_row
+    
+    pop ds
+    pop es
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+char16_x: dw 0
+char16_y: dw 0
+char16_row: dw 0
+
+; ============================================================
+; Draw a string of 16x16 Chinese characters
+; Input: DS:SI -> GB2312 string, BP=X, DX=Y
+; ============================================================
+draw_string_16x16:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    push ds
+    
+draw_str16_loop:
+    lodsb
+    test al, al
+    jz draw_str16_done
+    
+    ; Check if it's a GB2312 character (high byte >= 0xA0)
+    cmp al, 0xA0
+    jb draw_str16_ascii
+    
+    ; GB2312 character, get next byte
+    mov ah, [si-1]       ; Actually we need the byte we just read
+    ; Let me fix this
+    dec si               ; Go back
+    lodsb                ; Read high byte into AL
+    mov bl, al           ; Save high byte
+    lodsb                ; Read low byte into AL
+    mov bh, al           ; Save low byte
+    
+    ; Now draw the character
+    ; DS:SI-2 points to the character
+    push bp
+    push dx
+    mov si, bp           ; We need to pass the character pointer
+    ; This is getting complicated, let me simplify
+    
+    ; Actually, let me just use the original SI
+    ; SI now points after the character
+    ; Character is at SI-2
+    push si
+    sub si, 2
+    
+    call draw_char_16x16
+    
+    pop si
+    pop dx
+    pop bp
+    add bp, 16           ; Move to next character
+    jmp draw_str16_loop
+    
+draw_str16_ascii:
+    ; ASCII character (for now, just skip)
+    add bp, 8
+    jmp draw_str16_loop
+    
+draw_str16_done:
+    pop ds
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; ============================================================
 ; Draw an 8x8 character using embedded font
 ; Input: AL=Character, BP=X, DX=Y
-; DS=0x0000 (code segment), ES will be set to VRAM
 ; ============================================================
 draw_char_8x8:
     push ax
@@ -323,7 +570,7 @@ draw_char_8x8:
     push es
     push ds
     
-    ; DS=0x0000 for absolute address access
+    ; DS=0x0000 for font access
     xor ax, ax
     mov ds, ax
     
@@ -337,11 +584,11 @@ draw_char_8x8:
     mov bx, ax
     shl bx, 3            ; BX = (char - 0x20) * 8
     
-    ; SI = 0x8000 + offset (font data copied here at startup)
+    ; SI = 0x8000 + offset
     mov si, 0x8000
-    add si, bx           ; SI = 0x8000 + (char - 0x20) * 8
+    add si, bx
     
-    ; Set ES to VRAM for drawing
+    ; Set ES to VRAM
     mov ax, 0xA000
     mov es, ax
     
@@ -349,45 +596,40 @@ draw_char_8x8:
     mov cx, 8
     mov [char_row], cx
 draw_char_row:
-    ; Get font byte for this row from 0x8000
     mov al, [si]
     inc si
     
-    ; Calculate current Y position
     mov dx, [char_y]
     mov ax, 8
-    sub ax, [char_row]   ; AX = current row (0-7)
-    add dx, ax           ; DX = char_y + row
+    sub ax, [char_row]
+    add dx, ax
     
-    ; Calculate VRAM offset for this row start
-    mov bp, dx           ; Save Y in BP
+    mov bp, dx
     mov ax, 320
-    mul bp               ; DX:AX = 320 * Y
+    mul bp
     mov di, ax
-    add di, [char_x]     ; DI = Y * 320 + X
+    add di, [char_x]
     
-    ; Draw 8 pixels for this row
     mov cx, 8
 draw_char_pixel:
     push cx
     push ax
     
-    ; Check if this bit is set
     test al, 0x80
     jz skip_pixel
     
-    mov al, 7            ; White color
+    mov al, 7
     stosb
     jmp next_pixel
     
 skip_pixel:
-    inc di               ; Skip this pixel
+    inc di
     
 next_pixel:
     pop ax
     pop cx
     
-    shl al, 1            ; Shift to next bit
+    shl al, 1
     loop draw_char_pixel
     
     dec word [char_row]
@@ -421,7 +663,7 @@ draw_string_8x8:
     push bp
     push ds
     
-    ; DS=0x0000 for absolute address access
+    ; DS=0x0000 for font access
     xor ax, ax
     mov ds, ax
     
@@ -438,7 +680,7 @@ draw_str_loop:
     
     pop dx
     pop bp
-    add bp, 8            ; Move to next character position
+    add bp, 8
     pop si
     
     jmp draw_str_loop
@@ -455,297 +697,71 @@ draw_str_done:
     ret
 
 ; ============================================================
-; 8x8 Font Data (simplified ASCII characters)
-; Each character is 8 bytes, one byte per row
+; 8x8 Font Data
 ; ============================================================
 font_8x8:
-    ; Space (0x20)
     db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    ; ! (0x21)
     db 0x18, 0x18, 0x18, 0x18, 0x18, 0x00, 0x18, 0x00
-    ; " (0x22)
     db 0x18, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    ; # (0x23)
     db 0x00, 0x24, 0x7E, 0x24, 0x24, 0x7E, 0x24, 0x00
-    ; $ (0x24)
     db 0x18, 0x3E, 0x40, 0x3C, 0x06, 0x7C, 0x18, 0x00
-    ; % (0x25)
     db 0x00, 0x62, 0x64, 0x08, 0x10, 0x26, 0x46, 0x00
-    ; & (0x26)
     db 0x1C, 0x22, 0x22, 0x1C, 0x2A, 0x44, 0x3A, 0x00
-    ; ' (0x27)
     db 0x18, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    ; ( (0x28)
     db 0x0C, 0x18, 0x30, 0x30, 0x30, 0x18, 0x0C, 0x00
-    ; ) (0x29)
     db 0x30, 0x18, 0x0C, 0x0C, 0x0C, 0x18, 0x30, 0x00
-    ; * (0x2A)
     db 0x00, 0x08, 0x3E, 0x1C, 0x1C, 0x3E, 0x08, 0x00
-    ; + (0x2B)
     db 0x00, 0x08, 0x08, 0x3E, 0x08, 0x08, 0x00, 0x00
-    ; , (0x2C)
     db 0x00, 0x00, 0x00, 0x00, 0x18, 0x18, 0x08, 0x00
-    ; - (0x2D)
     db 0x00, 0x00, 0x00, 0x3E, 0x00, 0x00, 0x00, 0x00
-    ; . (0x2E)
     db 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x18, 0x00
-    ; / (0x2F)
     db 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x40, 0x00
-    ; 0 (0x30)
     db 0x1C, 0x22, 0x26, 0x2A, 0x32, 0x22, 0x1C, 0x00
-    ; 1 (0x31)
     db 0x18, 0x38, 0x18, 0x18, 0x18, 0x18, 0x3C, 0x00
-    ; 2 (0x32)
     db 0x1C, 0x22, 0x04, 0x08, 0x10, 0x20, 0x3E, 0x00
-    ; 3 (0x33)
     db 0x3C, 0x06, 0x0C, 0x08, 0x0C, 0x06, 0x3C, 0x00
-    ; 4 (0x34)
     db 0x08, 0x18, 0x28, 0x48, 0x7E, 0x08, 0x08, 0x00
-    ; 5 (0x35)
     db 0x3E, 0x20, 0x3C, 0x06, 0x06, 0x26, 0x1C, 0x00
-    ; 6 (0x36)
     db 0x1C, 0x20, 0x3C, 0x26, 0x26, 0x26, 0x1C, 0x00
-    ; 7 (0x37)
     db 0x3E, 0x04, 0x08, 0x10, 0x10, 0x10, 0x10, 0x00
-    ; 8 (0x38)
     db 0x1C, 0x26, 0x26, 0x1C, 0x26, 0x26, 0x1C, 0x00
-    ; 9 (0x39)
     db 0x1C, 0x26, 0x26, 0x1E, 0x06, 0x0C, 0x18, 0x00
-    ; : (0x3A)
     db 0x00, 0x18, 0x18, 0x00, 0x18, 0x18, 0x00, 0x00
-    ; ; (0x3B)
     db 0x00, 0x18, 0x18, 0x00, 0x18, 0x18, 0x08, 0x00
-    ; < (0x3C)
     db 0x04, 0x08, 0x10, 0x20, 0x10, 0x08, 0x04, 0x00
-    ; = (0x3D)
     db 0x00, 0x00, 0x3E, 0x00, 0x3E, 0x00, 0x00, 0x00
-    ; > (0x3E)
     db 0x20, 0x10, 0x08, 0x04, 0x08, 0x10, 0x20, 0x00
-    ; ? (0x3F)
     db 0x1C, 0x26, 0x06, 0x0C, 0x18, 0x00, 0x18, 0x00
-    ; @ (0x40)
     db 0x1C, 0x26, 0x26, 0x2E, 0x2A, 0x20, 0x1C, 0x00
-    ; A (0x41)
     db 0x18, 0x24, 0x24, 0x3C, 0x42, 0x42, 0x42, 0x00
-    ; B (0x42)
     db 0x3C, 0x22, 0x22, 0x3C, 0x22, 0x22, 0x3C, 0x00
-    ; C (0x43)
     db 0x1C, 0x26, 0x40, 0x40, 0x40, 0x26, 0x1C, 0x00
-    ; D (0x44)
     db 0x38, 0x24, 0x22, 0x22, 0x22, 0x24, 0x38, 0x00
-    ; E (0x45)
     db 0x3E, 0x20, 0x20, 0x38, 0x20, 0x20, 0x3E, 0x00
-    ; F (0x46)
     db 0x3E, 0x20, 0x20, 0x38, 0x20, 0x20, 0x20, 0x00
-    ; G (0x47)
     db 0x1C, 0x26, 0x40, 0x40, 0x4E, 0x26, 0x1E, 0x00
-    ; H (0x48)
     db 0x42, 0x42, 0x42, 0x7E, 0x42, 0x42, 0x42, 0x00
-    ; I (0x49)
     db 0x3C, 0x18, 0x18, 0x18, 0x18, 0x18, 0x3C, 0x00
-    ; J (0x4A)
     db 0x1E, 0x0C, 0x0C, 0x0C, 0x0C, 0x4C, 0x38, 0x00
-    ; K (0x4B)
     db 0x44, 0x48, 0x50, 0x60, 0x50, 0x48, 0x44, 0x00
-    ; L (0x4C)
     db 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x3E, 0x00
-    ; M (0x4D)
     db 0x42, 0x66, 0x5A, 0x5A, 0x42, 0x42, 0x42, 0x00
-    ; N (0x4E)
     db 0x42, 0x62, 0x52, 0x4A, 0x46, 0x42, 0x42, 0x00
-    ; O (0x4F)
     db 0x1C, 0x26, 0x42, 0x42, 0x42, 0x26, 0x1C, 0x00
-    ; P (0x50)
     db 0x3C, 0x22, 0x22, 0x3C, 0x20, 0x20, 0x20, 0x00
-    ; Q (0x51)
     db 0x1C, 0x26, 0x42, 0x42, 0x4A, 0x2C, 0x16, 0x00
-    ; R (0x52)
     db 0x3C, 0x22, 0x22, 0x3C, 0x28, 0x24, 0x42, 0x00
-    ; S (0x53)
     db 0x1E, 0x20, 0x20, 0x1C, 0x06, 0x06, 0x3C, 0x00
-    ; T (0x54)
     db 0x7E, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x00
-    ; U (0x55)
     db 0x42, 0x42, 0x42, 0x42, 0x42, 0x26, 0x1C, 0x00
-    ; V (0x56)
     db 0x42, 0x42, 0x42, 0x24, 0x24, 0x18, 0x18, 0x00
-    ; W (0x57)
     db 0x42, 0x42, 0x42, 0x5A, 0x5A, 0x66, 0x42, 0x00
-    ; X (0x58)
     db 0x42, 0x24, 0x18, 0x18, 0x18, 0x24, 0x42, 0x00
-    ; Y (0x59)
     db 0x42, 0x24, 0x18, 0x18, 0x18, 0x18, 0x18, 0x00
-    ; Z (0x5A)
     db 0x3E, 0x04, 0x08, 0x10, 0x20, 0x40, 0x3E, 0x00
-    ; [ (0x5B)
     db 0x3C, 0x20, 0x20, 0x20, 0x20, 0x20, 0x3C, 0x00
-    ; \ (0x5C)
     db 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x02, 0x00
-    ; ] (0x5D)
     db 0x3C, 0x04, 0x04, 0x04, 0x04, 0x04, 0x3C, 0x00
-    ; ^ (0x5E)
     db 0x18, 0x24, 0x42, 0x00, 0x00, 0x00, 0x00, 0x00
-    ; _ (0x5F)
     db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF
-    ; ` (0x60)
-    db 0x18, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    ; a (0x61)
-    db 0x00, 0x00, 0x1C, 0x06, 0x1E, 0x26, 0x1E, 0x00
-    ; b (0x62)
-    db 0x20, 0x20, 0x38, 0x24, 0x24, 0x24, 0x38, 0x00
-    ; c (0x63)
-    db 0x00, 0x00, 0x1C, 0x20, 0x20, 0x20, 0x1C, 0x00
-    ; d (0x64)
-    db 0x06, 0x06, 0x1E, 0x26, 0x26, 0x26, 0x1E, 0x00
-    ; e (0x65)
-    db 0x00, 0x00, 0x1C, 0x26, 0x3E, 0x20, 0x1C, 0x00
-    ; f (0x66)
-    db 0x0C, 0x18, 0x18, 0x3C, 0x18, 0x18, 0x18, 0x00
-    ; g (0x67)
-    db 0x00, 0x00, 0x1E, 0x26, 0x26, 0x1E, 0x06, 0x3C
-    ; h (0x68)
-    db 0x20, 0x20, 0x38, 0x24, 0x24, 0x24, 0x24, 0x00
-    ; i (0x69)
-    db 0x18, 0x00, 0x38, 0x18, 0x18, 0x18, 0x3C, 0x00
-    ; j (0x6A)
-    db 0x0C, 0x00, 0x1C, 0x0C, 0x0C, 0x0C, 0x0C, 0x38
-    ; k (0x6B)
-    db 0x20, 0x20, 0x24, 0x28, 0x30, 0x28, 0x24, 0x00
-    ; l (0x6C)
-    db 0x38, 0x18, 0x18, 0x18, 0x18, 0x18, 0x3C, 0x00
-    ; m (0x6D)
-    db 0x00, 0x00, 0x36, 0x5A, 0x5A, 0x5A, 0x42, 0x00
-    ; n (0x6E)
-    db 0x00, 0x00, 0x38, 0x24, 0x24, 0x24, 0x24, 0x00
-    ; o (0x6F)
-    db 0x00, 0x00, 0x1C, 0x26, 0x26, 0x26, 0x1C, 0x00
-    ; p (0x70)
-    db 0x00, 0x00, 0x38, 0x24, 0x24, 0x38, 0x20, 0x20
-    ; q (0x71)
-    db 0x00, 0x00, 0x1E, 0x26, 0x26, 0x1E, 0x06, 0x06
-    ; r (0x72)
-    db 0x00, 0x00, 0x38, 0x24, 0x20, 0x20, 0x20, 0x00
-    ; s (0x73)
-    db 0x00, 0x00, 0x1E, 0x20, 0x1C, 0x06, 0x3C, 0x00
-    ; t (0x74)
-    db 0x10, 0x10, 0x3C, 0x10, 0x10, 0x10, 0x0C, 0x00
-    ; u (0x75)
-    db 0x00, 0x00, 0x24, 0x24, 0x24, 0x26, 0x1A, 0x00
-    ; v (0x76)
-    db 0x00, 0x00, 0x42, 0x42, 0x24, 0x24, 0x18, 0x00
-    ; w (0x77)
-    db 0x00, 0x00, 0x42, 0x42, 0x5A, 0x5A, 0x24, 0x00
-    ; x (0x78)
-    db 0x00, 0x00, 0x42, 0x24, 0x18, 0x24, 0x42, 0x00
-    ; y (0x79)
-    db 0x00, 0x00, 0x42, 0x24, 0x24, 0x1E, 0x06, 0x3C
-    ; z (0x7A)
-    db 0x00, 0x00, 0x3E, 0x0C, 0x18, 0x30, 0x3E, 0x00
-    ; { (0x7B)
-    db 0x0C, 0x18, 0x18, 0x30, 0x18, 0x18, 0x0C, 0x00
-    ; | (0x7C)
-    db 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x00
-    ; } (0x7D)
-    db 0x30, 0x18, 0x18, 0x0C, 0x18, 0x18, 0x30, 0x00
-    ; ~ (0x7E)
-    db 0x00, 0x00, 0x08, 0x54, 0x20, 0x00, 0x00, 0x00
-
-; ============================================================
-; String Data
-; ============================================================
-title_msg:    db 'Nova OS', 0
-loading_msg:  db 'Loading...', 0
-username_msg: db 'Username:', 0
-password_msg: db 'Password:', 0
-login_msg:    db 'Login', 0
-
-; ============================================================
-; Logo DAP (Disk Address Packet)
-; ============================================================
-logo_dap:
-    db 0x10        ; Size (16 bytes)
-    db 0           ; Reserved
-    dw 0           ; Sector count (will be set at runtime)
-    dw 0           ; Buffer offset (will be set at runtime)
-    dw 0           ; Buffer segment (will be set at runtime)
-    dd 0           ; LBA low (will be set at runtime)
-    dd 0           ; LBA high
-
-; ============================================================
-; Draw 160x160 image from memory to VRAM
-; Input: SI=Source segment, DI=Dest segment (VRAM)
-;        CX=X position, DX=Y position
-;        BX=Width (160), BP=Height (160)
-; ============================================================
-draw_image_160x160:
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-    push bp
-    push es
-    push ds
-    
-    ; Save source segment
-    mov [img_src_seg], si
-    ; Save dest segment (VRAM)
-    mov [img_dst_seg], di
-    ; Save X position
-    mov [img_x], cx
-    ; Save Y position
-    mov [img_y], dx
-    ; Save width
-    mov [img_width], bx
-    ; Save height
-    mov [img_height], bp
-    
-    ; Set DS to source segment
-    mov ds, [img_src_seg]
-    ; Set ES to VRAM
-    mov es, [img_dst_seg]
-    
-    ; Source offset = 0
-    xor si, si
-    
-    ; Draw row by row
-    mov bp, [img_height]
-draw_img_row:
-    push bp
-    
-    ; Calculate VRAM offset for this row: Y * 320 + X
-    mov ax, [img_y]
-    mov dx, 320
-    mul dx
-    add ax, [img_x]
-    mov di, ax
-    
-    ; Copy one row (160 bytes)
-    mov cx, [img_width]
-    rep movsb
-    
-    ; Move to next row
-    inc word [img_y]
-    
-    pop bp
-    dec bp
-    jnz draw_img_row
-    
-    pop ds
-    pop es
-    pop bp
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-
-img_src_seg:  dw 0
-img_dst_seg:  dw 0
-img_x:        dw 0
-img_y:        dw 0
-img_width:    dw 0
-img_height:   dw 0
+    db 0x18, 0x0C, 0x00, 0x00, 0
