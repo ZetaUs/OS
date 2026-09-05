@@ -2,6 +2,23 @@ bits 16
 org 0x7E00
 
 start:
+    ; Far jump to set CS=0x07E0 so all relative addresses work correctly
+    jmp 0x07E0:start_real
+
+start_real:
+    ; Initialize segment registers
+    cli
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov sp, 0x7000     ; Stack below stage2 (stage2 is at 0x7E00)
+    sti
+    
+    ; Set DS to stage2 segment (0x07E0) for accessing code/data
+    mov ax, 0x07E0
+    mov ds, ax
+    
     ; Set VGA mode 0x13 (320x200, 256 colors)
     mov ax, 0x0013
     int 0x10
@@ -18,31 +35,31 @@ start:
     rep stosb
     
     ; Draw title "Nova OS"
-    mov si, title_msg
+    mov si, title_msg - start
     mov bp, 120
     mov dx, 10
     call draw_string_8x8
     
     ; Draw "Welcome"
-    mov si, welcome_msg
+    mov si, welcome_msg - start
     mov bp, 110
     mov dx, 50
     call draw_string_8x8
     
     ; Draw "Username:"
-    mov si, username_msg
+    mov si, username_msg - start
     mov bp, 40
     mov dx, 80
     call draw_string_8x8
     
     ; Draw "Password:"
-    mov si, password_msg
+    mov si, password_msg - start
     mov bp, 40
     mov dx, 110
     call draw_string_8x8
     
     ; Draw "Login"
-    mov si, login_msg
+    mov si, login_msg - start
     mov bp, 130
     mov dx, 140
     call draw_string_8x8
