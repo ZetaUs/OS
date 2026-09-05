@@ -9,6 +9,15 @@ start:
     mov ds, ax
     mov es, ax
     
+    ; Copy font data to 0x9000 for reliable access
+    ; DS=0x0000, SI=font_8x8 (absolute address 0x8033)
+    ; ES=0x0000, DI=0x9000
+    mov si, font_8x8
+    mov di, 0x9000
+    mov cx, 768          ; 96 characters * 8 bytes = 768 bytes
+    cld
+    rep movsb
+    
     ; Set video mode 0x13 (320x200, 256 colors)
     mov ax, 0x0013
     int 0x10
@@ -328,9 +337,9 @@ draw_char_8x8:
     mov bx, ax
     shl bx, 3            ; BX = (char - 0x20) * 8
     
-    ; SI = font_8x8 base address + offset
-    mov si, font_8x8
-    add si, bx           ; SI = font_8x8 + (char - 0x20) * 8
+    ; SI = 0x9000 + offset (font data copied here at startup)
+    mov si, 0x9000
+    add si, bx           ; SI = 0x9000 + (char - 0x20) * 8
     
     ; Set ES to VRAM for drawing
     mov ax, 0xA000
