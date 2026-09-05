@@ -133,13 +133,10 @@ load_loop:
     mov al, 10        ; Green
     rep stosb
     
-    ; Load HZK16 using LBA extension (int 0x13 ah=0x42)
-    ; LBA 115, read 523 sectors to 0x1000:0x0000
-    
-    ; Call int 0x13 ah=0x42
+    ; Load HZK16 using LBA extension (int 0x13 ah=0x42) - same as boot.asm
+    mov si, hzk_dap
     mov ah, 0x42
     mov dl, [0x0500]    ; Boot drive
-    mov si, hzk_dap
     int 0x13
     jc hzk_load_error
     
@@ -150,8 +147,6 @@ load_loop:
     mov cx, 64000
     mov al, 11        ; Cyan
     rep stosb
-    
-    jmp hzk_chs_done
 
 hzk_chs_done:
     ; HZK loaded successfully, now draw Chinese login screen
