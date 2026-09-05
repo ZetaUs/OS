@@ -18,13 +18,14 @@ if errorlevel 1 exit /b 1
 
 echo [3/4] Building disk image...
 
-:: Create a proper hard disk image with logo and HZK16 data
+:: Create a simple hard disk image without logo and HZK16
 :: Layout:
 ::   LBA 0: boot sector (512 bytes)
 ::   LBA 1-64: stage2 (32KB)
-::   LBA 65-114: logo.raw (25600 bytes = 50 sectors)
-::   LBA 115-637: HZK16 (267616 bytes = 523 sectors)
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$boot=[System.IO.File]::ReadAllBytes('%OUT%\boot.bin'); $stage2=[System.IO.File]::ReadAllBytes('%OUT%\stage2.bin'); $logo=[System.IO.File]::ReadAllBytes('%~dp0logo.raw'); $hzk=[System.IO.File]::ReadAllBytes('%~dp0HZK\HZK16'); $imgSize=16*63*200*512; $pad=New-Object byte[] ($imgSize-512-32768-25600-267616); $img=New-Object byte[] $imgSize; $boot.CopyTo($img,0); $stage2.CopyTo($img,512); $logo.CopyTo($img,512+32768); $hzk.CopyTo($img,512+32768+25600); $pad.CopyTo($img,512+32768+25600+267616); [System.IO.File]::WriteAllBytes('%OUT%\nova-os.img',$img)"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$boot=[System.IO.File]::ReadAllBytes('%OUT%\boot.bin'); $stage2=[System.IO.File]::ReadAllBytes('%OUT%\stage2.bin'); $imgSize=16*63*200*512; $pad=New-Object byte[] ($imgSize-512-32768); $img=New-Object byte[] $imgSize; $boot.CopyTo($img,0); $stage2.CopyTo($img,512); $pad.CopyTo($img,512+32768); [System.IO.File]::WriteAllBytes('%OUT%\nova-os.img',$img)"
+
+:: Also create a floppy image for testing
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$boot=[System.IO.File]::ReadAllBytes('%OUT%\boot.bin'); $stage2=[System.IO.File]::ReadAllBytes('%OUT%\stage2.bin'); $imgSize=1474560; $pad=New-Object byte[] ($imgSize-512-32768); $img=New-Object byte[] $imgSize; $boot.CopyTo($img,0); $stage2.CopyTo($img,512); $pad.CopyTo($img,512+32768); [System.IO.File]::WriteAllBytes('%OUT%\nova-os-floppy.img',$img)"
 
 for %%F in ("%OUT%\boot.bin") do if not %%~zF==512 (
   echo Boot sector must be 512 bytes, got %%~zF bytes

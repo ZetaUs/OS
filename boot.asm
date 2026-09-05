@@ -11,30 +11,37 @@ start:
     sti
     
     ; Save boot drive number
-    mov [0x0500], dl
+    mov [boot_drive], dl
     
-    ; Set DS to CS for accessing boot sector data (org 0x7C00)
-    push cs
-    pop ds
+    ; DEBUG: Set VGA mode and draw green pixel to confirm boot sector runs
+    mov ax, 0x0013
+    int 0x10
+    push es
+    mov ax, 0xA000
+    mov es, ax
+    mov di, 100 * 320 + 150
+    mov al, 2          ; Green pixel at center
+    stosb
+    pop es
     
-    ; Use LBA extended read (int 0x13 ah=0x42)
-    mov si, dap
-    mov ah, 0x42
-    mov dl, [0x0500]
+    ; Use CHS read (int 0x13 ah=0x02) for floppy compatibility
+    ; Read 64 sectors from cylinder 0, head 0, sector 2
+    mov ah, 0x02
+    mov al, 64         ; 64 sectors
+    mov ch, 0          ; Cylinder 0
+    mov cl, 2          ; Sector 2
+    mov dh, 0          ; Head 0
+    mov dl, [boot_drive]
+    mov bx, 0x7E00     ; ES:BX = 0x0000:0x7E00
     int 0x13
     jc disk_error
     
-    ; Print "LS2!"
+    ; Print "OK"
     mov si, msg_ok
     call print_string
     
-    ; Print "J"
-    mov ah, 0x0E
-    mov al, 'J'
-    int 0x10
-    
-    ; Jump to stage2 using far jump
-    jmp dword 0x0000:0x7E00
+    ; Jump to stage2
+    jmp 0x0000:0x7E00
 
 print_string:
     mov ah, 0x0E
@@ -48,25 +55,15 @@ print_string:
     ret
 
 disk_error:
-    mov ah, 0x0E
-    mov al, 'E'
-    int 0x10
+    mov si, msg_err
+    call print_string
 halt_loop:
     hlt
     jmp halt_loop
 
-msg_ok: db 'LS2!', 0
+msg_ok: db 'OK', 0
+msg_err: db 'ERR', 0
 boot_drive: db 0
-
-; Disk Address Packet for LBA read
-dap:
-    db 0x10        ; Size (16 bytes)
-    db 0           ; Reserved
-    dw 64          ; Sector count (64 sectors = 32KB for stage2)
-    dw 0x7E00      ; Buffer offset
-    dw 0x0000      ; Buffer segment
-    dd 1           ; LBA start (low 32 bits)
-    dd 0           ; LBA start (high 32 bits)
 
 times 510-($-$$) db 0
 dw 0xAA55

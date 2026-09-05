@@ -2,66 +2,14 @@ bits 16
 org 0x7E00
 
 start:
-    ; Set DS=ES=0x0000 since org 0x7E00 means labels are absolute offsets
-    xor ax, ax
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
-    mov sp, 0x7C00
-    
     ; Set VGA mode 0x13 (320x200, 256 colors)
     mov ax, 0x0013
     int 0x10
     
-    ; Enable chain-4 mode for linear pixel access
-    mov dx, 0x03C4
-    mov al, 0x00
-    out dx, al
-    inc dx
-    mov al, 0x01
-    out dx, al
-    
-    mov dx, 0x03C4
-    mov al, 0x04
-    out dx, al
-    inc dx
-    mov al, 0x0E
-    out dx, al
-    
-    mov dx, 0x03CE
-    mov al, 0x05
-    out dx, al
-    inc dx
-    mov al, 0x40
-    out dx, al
-    
-    mov dx, 0x03C4
-    mov al, 0x00
-    out dx, al
-    inc dx
-    mov al, 0x03
-    out dx, al
-    
-    ; DS=ES=0x0000 already set
-    ; Initialize palette
+    ; Initialize palette first
     call init_palette
     
-    ; Load 8x8 font to 0x8000
-    xor ax, ax
-    mov ds, ax
-    mov si, font_8x8
-    mov es, ax
-    mov di, 0x8000
-    mov cx, 1024        ; 128 chars * 8 bytes = 1024 bytes
-    cld
-    rep movsb
-    
-    ; Reset segments
-    xor ax, ax
-    mov ds, ax
-    mov es, ax
-    
-    ; Draw loading screen background
+    ; Fill screen with blue
     mov ax, 0xA000
     mov es, ax
     xor di, di
@@ -75,180 +23,31 @@ start:
     mov dx, 10
     call draw_string_8x8
     
-    ; Draw progress bar background
-    mov cx, 80
-    mov dx, 160
-    mov bx, 160
-    mov si, 16
-    mov al, 5
-    call draw_rect
-    
-    ; Draw progress bar fill
-    mov cx, 82
-    mov dx, 162
-    mov bx, 0
-    mov si, 12
-    mov al, 6
-    call draw_rect
-    
-    ; Draw "Loading..." text
-    mov si, loading_msg
-    mov bp, 120
-    mov dx, 182
-    call draw_string_8x8
-    
-    ; Skip loading animation for now - go directly to login screen
-    jmp draw_login_screen
-    
-    ; Draw progress bar background
-    mov cx, 80
-    mov dx, 160
-    mov bx, 160
-    mov si, 16
-    mov al, 5
-    call draw_rect
-    
-    ; Draw progress bar fill
-    mov cx, 82
-    mov dx, 162
-    mov bx, 0
-    mov si, 12
-    mov al, 6
-    call draw_rect
-    
-    ; Draw "Loading..." text
-    mov si, loading_msg
-    mov bp, 120
-    mov dx, 182
-    call draw_string_8x8
-    
-    ; Skip loading animation for now - go directly to login screen
-    jmp draw_login_screen
-    
-    ; Draw progress bar background
-    mov cx, 80
-    mov dx, 160
-    mov bx, 160
-    mov si, 16
-    mov al, 5
-    call draw_rect
-    
-    ; Draw progress bar fill
-    mov cx, 82
-    mov dx, 162
-    mov bx, 0
-    mov si, 12
-    mov al, 6
-    call draw_rect
-    
-    ; Draw "Loading..." text
-    mov si, loading_msg
-    mov bp, 120
-    mov dx, 182
-    call draw_string_8x8
-    
-    ; Skip loading animation for now - go directly to login screen
-    jmp draw_login_screen
-    
-    ; Animate loading progress
-    mov cx, 0
-load_loop:
-    push cx
-    mov cx, 82
-    mov dx, 162
-    mov bx, 156
-    mov si, 12
-    mov al, 1
-    call draw_rect
-    pop cx
-    push cx
-    mov bx, cx
-    mov cx, 82
-    mov dx, 162
-    mov si, 12
-    mov al, 6
-    call draw_rect
-    pop cx
-    add cx, 2
-    cmp cx, 156
-    jl load_loop
-    
-draw_login_screen:
-    ; Draw login screen
-    ; Clear screen with dark blue
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 64000
-    mov al, 1
-    rep stosb
-    
-    ; Debug: Direct pixel write to VRAM - draw a yellow line at row 50
-    mov ax, 0xA000
-    mov es, ax
-    mov di, 50 * 320  ; Row 50
-    mov cx, 320
-draw_debug_line:
-    mov al, 14        ; Yellow
-    stosb
-    loop draw_debug_line
-    
-    ; Draw login box
-    mov cx, 20
-    mov dx, 20
-    mov bx, 280
-    mov si, 160
-    mov al, 2
-    call draw_rect
-    
-    ; Draw title "Welcome"
+    ; Draw "Welcome"
     mov si, welcome_msg
     mov bp, 110
-    mov dx, 30
+    mov dx, 50
     call draw_string_8x8
     
     ; Draw "Username:"
     mov si, username_msg
     mov bp, 40
-    mov dx, 65
+    mov dx, 80
     call draw_string_8x8
-    
-    ; Draw username input box
-    mov cx, 100
-    mov dx, 60
-    mov bx, 160
-    mov si, 16
-    mov al, 3
-    call draw_rect
     
     ; Draw "Password:"
     mov si, password_msg
     mov bp, 40
-    mov dx, 115
-    call draw_string_8x8
-    
-    ; Draw password input box
-    mov cx, 100
     mov dx, 110
-    mov bx, 160
-    mov si, 16
-    mov al, 3
-    call draw_rect
-    
-    ; Draw login button
-    mov cx, 110
-    mov dx, 155
-    mov bx, 100
-    mov si, 24
-    mov al, 6
-    call draw_rect
-    
-    ; Draw "Login" button text
-    mov si, login_msg
-    mov bp, 136
-    mov dx, 162
     call draw_string_8x8
     
+    ; Draw "Login"
+    mov si, login_msg
+    mov bp, 130
+    mov dx, 140
+    call draw_string_8x8
+    
+    ; Halt
 halt_s2:
     hlt
     jmp halt_s2
@@ -416,8 +215,10 @@ draw_string_8x8:
     push di
     push bp
     push es
+    push ds
     mov [str_x], bp
     mov [str_y], dx
+    
 draw_str_loop:
     lodsb
     test al, al
@@ -432,6 +233,7 @@ draw_str_loop:
     add word [str_x], 8
     jmp draw_str_loop
 draw_str_done:
+    pop ds
     pop es
     pop bp
     pop di
@@ -455,16 +257,19 @@ draw_char_8x8:
     mov [char_x], bp
     mov [char_y], dx
     
-    ; Calculate font data offset: font_8x8 + (char_code * 8)
+    ; Calculate font data offset: (char_code * 8)
     mov bl, al
     mov bh, 0
     shl bx, 3            ; BX = char_code * 8
     
-    ; Read font data directly from stage2 code segment
-    push cs
-    pop ds
-    mov si, font_8x8
-    add si, bx           ; SI = font_8x8 + offset
+    ; Access font data relative to stage2 start
+    ; stage2 is at physical 0x7E00, font_8x8 is at some offset from start
+    ; We need: physical_addr = 0x7E00 + (font_8x8 - start) + BX
+    ; With DS=0x07E0, SI=(font_8x8 - start) + BX, physical = 0x07E0*16 + SI = 0x7E00 + SI ✓
+    mov ax, 0x07E0
+    mov ds, ax
+    mov si, font_8x8 - start
+    add si, bx           ; SI = offset from stage2 start + char offset
     
     mov ax, 0xA000
     mov es, ax
