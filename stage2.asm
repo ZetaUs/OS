@@ -9,12 +9,6 @@ start:
     mov ds, ax
     mov es, ax
     
-    ; Copy font data to 0x8000 for reliable access
-    mov si, font_8x8
-    mov di, 0x8000
-    mov cx, 768          ; 96 characters * 8 bytes = 768 bytes
-    rep movsb
-    
     ; Set video mode 0x13 (320x200, 256 colors)
     mov ax, 0x0013
     int 0x10
