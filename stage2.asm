@@ -328,9 +328,9 @@ draw_char_8x8:
     mov bx, ax
     shl bx, 3            ; BX = (char - 0x20) * 8
     
-    ; SI = 0x8000 + offset (font data copied here at startup)
-    mov si, 0x8000
-    add si, bx           ; SI = 0x8000 + (char - 0x20) * 8
+    ; SI = font_8x8 base address + offset
+    mov si, font_8x8
+    add si, bx           ; SI = font_8x8 + (char - 0x20) * 8
     
     ; Set ES to VRAM for drawing
     mov ax, 0xA000
@@ -340,7 +340,7 @@ draw_char_8x8:
     mov cx, 8
     mov [char_row], cx
 draw_char_row:
-    ; Get font byte for this row from code segment
+    ; Get font byte for this row from code segment using CS prefix
     mov al, [cs:si]
     inc si
     
