@@ -55,6 +55,15 @@ start:
     
     call init_palette
     
+    ; Debug 1: Fill screen with RED
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 64000
+    mov al, 40
+    rep stosb
+    
+    ; Debug 2: Setup DAP - Fill with YELLOW
     mov si, hzk_dap
     mov word [si+2], 523
     mov word [si+4], 0x0000
@@ -62,10 +71,46 @@ start:
     mov dword [si+8], 115
     mov dword [si+12], 0
     
-    mov ah, 0x42
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 64000
+    mov al, 62
+    rep stosb
+    
+    ; Debug 3: Get boot drive - Fill with CYAN
+    xor ax, ax
+    mov ds, ax
     mov dl, [0x0500]
+    
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 64000
+    mov al, 59
+    rep stosb
+    
+    ; Debug 4: Call int 0x13 - Fill with MAGENTA before call
+    mov ah, 0x42
+    mov si, hzk_dap
+    
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 64000
+    mov al, 45
+    rep stosb
+    
     int 0x13
     jc hzk_load_error
+    
+    ; Success: Fill with GREEN
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 64000
+    mov al, 42
+    rep stosb
     
     xor ax, ax
     mov es, ax
@@ -242,6 +287,46 @@ init_palette:
     mov al, 63
     out dx, al
     out dx, al
+    out dx, al
+    
+    ; Color 40: Red (debug)
+    mov al, 40
+    out dx, al
+    xor al, al
+    out dx, al
+    xor al, al
+    out dx, al
+    
+    ; Color 42: Green (debug)
+    xor al, al
+    out dx, al
+    mov al, 63
+    out dx, al
+    xor al, al
+    out dx, al
+    
+    ; Color 62: Yellow (debug)
+    mov al, 63
+    out dx, al
+    mov al, 63
+    out dx, al
+    xor al, al
+    out dx, al
+    
+    ; Color 45: Magenta (debug)
+    mov al, 63
+    out dx, al
+    xor al, al
+    out dx, al
+    mov al, 63
+    out dx, al
+    
+    ; Color 59: Cyan (debug)
+    mov al, 63
+    out dx, al
+    mov al, 63
+    out dx, al
+    mov al, 63
     out dx, al
     
     pop dx
