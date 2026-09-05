@@ -125,13 +125,36 @@ load_loop:
     cmp cx, 156
     jl load_loop
     
-    ; SKIP HZK loading for now - test VGA display directly
-    jmp test_vga_display
+    ; Debug: GREEN - HZK16 loading started
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 64000
+    mov al, 10        ; Green
+    rep stosb
     
-read_hzk_chs:
-    ; (skipped)
+    ; Load HZK16 using LBA extension (int 0x13 ah=0x42)
+    ; LBA 115, read 523 sectors to 0x1000:0x0000
     
-test_vga_display:
+    ; Call int 0x13 ah=0x42
+    mov ah, 0x42
+    mov dl, [0x0500]    ; Boot drive
+    mov si, hzk_dap
+    int 0x13
+    jc hzk_load_error
+    
+    ; Debug: CYAN - HZK16 loaded successfully
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 64000
+    mov al, 11        ; Cyan
+    rep stosb
+    
+    jmp hzk_chs_done
+
+hzk_chs_done:
+    ; HZK loaded successfully, now draw Chinese login screen
     ; Clear screen with dark blue
     mov ax, 0xA000
     mov es, ax
@@ -140,21 +163,61 @@ test_vga_display:
     mov al, 1
     rep stosb
     
-    ; Draw a simple test pattern - white rectangle in center
-    mov cx, 100
-    mov dx, 50
-    mov bx, 120
-    mov si, 100
-    mov al, 7            ; White
+    ; Draw login box
+    mov cx, 20
+    mov dx, 20
+    mov bx, 280
+    mov si, 160
+    mov al, 2
     call draw_rect
     
-    ; Draw "TEST" using 8x8 font
-    mov si, test_msg
-    mov bp, 120
-    mov dx, 90
-    call draw_string_8x8
+    ; Draw title "欢迎使用"
+    mov si, welcome_msg
+    mov bp, 100
+    mov dx, 30
+    call draw_string_16x16
     
-    jmp halt_s2
+    ; Draw "用户名:"
+    mov si, username_msg
+    mov bp, 40
+    mov dx, 65
+    call draw_string_16x16
+    
+    ; Draw username input box
+    mov cx, 100
+    mov dx, 60
+    mov bx, 160
+    mov si, 16
+    mov al, 3
+    call draw_rect
+    
+    ; Draw "密码:"
+    mov si, password_msg
+    mov bp, 40
+    mov dx, 115
+    call draw_string_16x16
+    
+    ; Draw password input box
+    mov cx, 100
+    mov dx, 110
+    mov bx, 160
+    mov si, 16
+    mov al, 3
+    call draw_rect
+    
+    ; Draw login button
+    mov cx, 110
+    mov dx, 155
+    mov bx, 100
+    mov si, 24
+    mov al, 6
+    call draw_rect
+    
+    ; Draw "登录" button text
+    mov si, login_msg
+    mov bp, 132
+    mov dx, 162
+    call draw_string_16x16
     
 halt_s2:
     hlt
