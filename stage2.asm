@@ -69,11 +69,36 @@ start:
     mov al, 1
     rep stosb
     
-    ; Draw title
+    ; Draw title "Nova OS"
     mov si, title_msg
     mov bp, 120
     mov dx, 10
     call draw_string_8x8
+    
+    ; Draw progress bar background
+    mov cx, 80
+    mov dx, 160
+    mov bx, 160
+    mov si, 16
+    mov al, 5
+    call draw_rect
+    
+    ; Draw progress bar fill
+    mov cx, 82
+    mov dx, 162
+    mov bx, 0
+    mov si, 12
+    mov al, 6
+    call draw_rect
+    
+    ; Draw "Loading..." text
+    mov si, loading_msg
+    mov bp, 120
+    mov dx, 182
+    call draw_string_8x8
+    
+    ; Skip loading animation for now - go directly to login screen
+    jmp draw_login_screen
     
     ; Draw progress bar background
     mov cx, 80
@@ -321,6 +346,30 @@ init_palette:
     pop ax
     ret
 
+; Draw 8 pixels from AL at VRAM position DI
+; Input: AL = byte pattern, DI = VRAM offset, ES = 0xA000
+draw_byte:
+    push ax
+    push cx
+    push dx
+    mov cx, 8
+    mov dl, al
+draw_byte_loop:
+    test dl, 0x80
+    jz draw_byte_skip
+    mov al, 7          ; White
+    stosb              ; DI auto-increments
+    jmp draw_byte_next
+draw_byte_skip:
+    inc di             ; Skip this pixel
+draw_byte_next:
+    shl dl, 1
+    loop draw_byte_loop
+    pop dx
+    pop cx
+    pop ax
+    ret
+
 draw_rect:
     push bp
     push si
@@ -411,11 +460,11 @@ draw_char_8x8:
     mov bh, 0
     shl bx, 3            ; BX = char_code * 8
     
-    ; Font data is at 0x8000 in memory (copied there earlier)
-    mov ax, 0x0000
-    mov ds, ax
-    mov si, 0x8000
-    add si, bx           ; SI = 0x8000 + offset
+    ; Read font data directly from stage2 code segment
+    push cs
+    pop ds
+    mov si, font_8x8
+    add si, bx           ; SI = font_8x8 + offset
     
     mov ax, 0xA000
     mov es, ax
