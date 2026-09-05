@@ -2,8 +2,8 @@ bits 16
 org 0x7E00
 
 start:
-    ; Set DS to stage2 segment (0x0000 since org 0x7E00)
-    xor ax, ax
+    ; Set DS to stage2 segment (0x07E0 since org 0x7E00)
+    mov ax, 0x07E0
     mov ds, ax
     mov es, ax
     mov ss, ax
@@ -42,28 +42,27 @@ start:
     mov al, 0x03
     out dx, al
     
-    ; Clear all segment registers
-    xor ax, ax
+    ; Set DS=ES=0x07E0 for accessing stage2 data
+    mov ax, 0x07E0
     mov ds, ax
     mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
     
     ; Initialize palette
     call init_palette
     
     ; Load 8x8 font to 0x8000
-    xor ax, ax
-    mov es, ax
+    mov ax, 0x07E0
+    mov ds, ax
     mov si, font_8x8
+    mov ax, 0x0000
+    mov es, ax
     mov di, 0x8000
     mov cx, 768
     cld
     rep movsb
     
-    ; Reset segments
-    xor ax, ax
+    ; Reset segments for VRAM access
+    mov ax, 0x07E0
     mov ds, ax
     mov es, ax
     
@@ -139,13 +138,15 @@ draw_login_screen:
     mov al, 1
     rep stosb
     
-    ; Debug: Draw a small white rectangle to confirm we're here
-    mov cx, 100
-    mov dx, 100
-    mov bx, 20
-    mov si, 20
-    mov al, 7          ; White
-    call draw_rect
+    ; Debug: Direct pixel write to VRAM - draw a yellow line at row 50
+    mov ax, 0xA000
+    mov es, ax
+    mov di, 50 * 320  ; Row 50
+    mov cx, 320
+draw_debug_line:
+    mov al, 14        ; Yellow
+    stosb
+    loop draw_debug_line
     
     ; Draw login box
     mov cx, 20
@@ -278,12 +279,6 @@ draw_rect:
     push si
     push di
     push es
-    push ds
-    
-    ; Set DS to stage2 code segment to access variables
-    push cs
-    pop ds
-    
     mov [rect_x], cx
     mov [rect_y], dx
     mov [rect_width], bx
@@ -310,7 +305,6 @@ draw_rect_col:
     inc dx
     dec word [rect_height]
     jnz draw_rect_row
-    pop ds
     pop es
     pop di
     pop si
@@ -326,12 +320,6 @@ draw_string_8x8:
     push di
     push bp
     push es
-    push ds
-    
-    ; Set DS to stage2 code segment to access variables
-    push cs
-    pop ds
-    
     mov [str_x], bp
     mov [str_y], dx
 draw_str_loop:
@@ -348,7 +336,6 @@ draw_str_loop:
     add word [str_x], 8
     jmp draw_str_loop
 draw_str_done:
-    pop ds
     pop es
     pop bp
     pop di
@@ -377,9 +364,9 @@ draw_char_8x8:
     mov bh, 0
     shl bx, 3            ; BX = char_code * 8
     
-    ; Set DS to CS (stage2 code segment) to access font_8x8
-    push cs
-    pop ds
+    ; Set DS to stage2 segment (0x07E0) to access font_8x8
+    mov ax, 0x07E0
+    mov ds, ax
     mov si, font_8x8     ; NASM will resolve this to correct offset
     add si, bx           ; SI = font_8x8 + offset
     
