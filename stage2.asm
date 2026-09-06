@@ -17,62 +17,37 @@ start:
     ; Initialize palette
     call init_palette
     
-    ; Draw login box (gray box in center)
-    ; Position: X=80, Y=40, Width=160, Height=120
-    mov cx, 80         ; X
-    mov dx, 40         ; Y
-    mov bx, 160        ; Width
-    mov si, 120        ; Height
+    ; Draw login box (gray box, centered)
+    mov cx, 60         ; X
+    mov dx, 25         ; Y
+    mov bx, 200        ; Width
+    mov si, 150        ; Height
     mov al, 2          ; Gray color
     call draw_rect
     
-    ; Draw title "Nova OS" at top of login box
-    mov si, title_msg
-    mov bp, 120        ; X position (centered)
-    mov dx, 50         ; Y position
-    call draw_string_8x8
-    
-    ; Draw username label
-    mov si, username_msg
-    mov bp, 90
-    mov dx, 75
-    call draw_string_8x8
-    
     ; Draw username input box
-    mov cx, 90
-    mov dx, 85
-    mov bx, 140
-    mov si, 16
+    mov cx, 75
+    mov dx, 77
+    mov bx, 170
+    mov si, 20
     mov al, 3          ; Light gray
     call draw_rect
     
-    ; Draw password label
-    mov si, password_msg
-    mov bp, 90
-    mov dx, 110
-    call draw_string_8x8
-    
     ; Draw password input box
-    mov cx, 90
-    mov dx, 120
-    mov bx, 140
-    mov si, 16
+    mov cx, 75
+    mov dx, 119
+    mov bx, 170
+    mov si, 20
     mov al, 3          ; Light gray
     call draw_rect
     
     ; Draw login button
     mov cx, 120
-    mov dx, 145
+    mov dx, 148
     mov bx, 80
-    mov si, 20
+    mov si, 24
     mov al, 4          ; Red
     call draw_rect
-    
-    ; Draw "Login" text on button
-    mov si, login_msg
-    mov bp, 132
-    mov dx, 150
-    call draw_string_8x8
     
     ; Halt forever
 halt_s2:
@@ -235,6 +210,236 @@ draw_rect_col:
     pop bp
     ret
 
+; Draw rounded rectangle
+; Input: CX=X, DX=Y, BX=Width, SI=Height, AL=Color
+draw_rounded_rect:
+    push bp
+    push si
+    push di
+    push es
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    mov [rect_x], cx
+    mov [rect_y], dx
+    mov [rect_width], bx
+    mov [rect_height], si
+    mov [rect_color], al
+    
+    mov ax, 0xA000
+    mov es, ax
+    
+    ; Draw main rectangle body (excluding corners)
+    ; Top edge (excluding corners)
+    mov dx, [rect_y]
+    inc dx             ; Skip top corner row
+    mov cx, [rect_x]
+    add cx, 4          ; Skip left corner
+    mov bx, [rect_width]
+    sub bx, 8          ; Width - 8 (4 left + 4 right corners)
+    call draw_hline
+    
+    ; Bottom edge (excluding corners)
+    mov dx, [rect_y]
+    add dx, [rect_height]
+    sub dx, 2          ; Skip bottom corner row
+    mov cx, [rect_x]
+    add cx, 4
+    mov bx, [rect_width]
+    sub bx, 8
+    call draw_hline
+    
+    ; Left edge (excluding corners)
+    mov dx, [rect_y]
+    add dx, 4
+    mov cx, [rect_x]
+    add cx, 4          ; Skip left corner column
+    mov bx, [rect_height]
+    sub bx, 8
+    call draw_vline
+    
+    ; Right edge (excluding corners)
+    mov dx, [rect_y]
+    add dx, 4
+    mov cx, [rect_x]
+    add cx, [rect_width]
+    sub cx, 5          ; Skip right corner column
+    mov bx, [rect_height]
+    sub bx, 8
+    call draw_vline
+    
+    ; Draw corners (4 pixels each)
+    ; Top-left corner
+    mov dx, [rect_y]
+    mov cx, [rect_x]
+    add cx, 2
+    mov bx, 4
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    add cx, 1
+    mov bx, 6
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    mov bx, 8
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    mov bx, 8
+    call draw_hline
+    
+    ; Top-right corner
+    mov dx, [rect_y]
+    mov cx, [rect_x]
+    add cx, [rect_width]
+    sub cx, 6
+    mov bx, 4
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    add cx, [rect_width]
+    sub cx, 7
+    mov bx, 6
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    add cx, [rect_width]
+    sub cx, 8
+    mov bx, 8
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    add cx, [rect_width]
+    sub cx, 8
+    mov bx, 8
+    call draw_hline
+    
+    ; Bottom-left corner
+    mov dx, [rect_y]
+    add dx, [rect_height]
+    sub dx, 4
+    mov cx, [rect_x]
+    mov bx, 8
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    mov bx, 8
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    add cx, 1
+    mov bx, 6
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    add cx, 2
+    mov bx, 4
+    call draw_hline
+    
+    ; Bottom-right corner
+    mov dx, [rect_y]
+    add dx, [rect_height]
+    sub dx, 4
+    mov cx, [rect_x]
+    add cx, [rect_width]
+    sub cx, 8
+    mov bx, 8
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    add cx, [rect_width]
+    sub cx, 8
+    mov bx, 8
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    add cx, [rect_width]
+    sub cx, 7
+    mov bx, 6
+    call draw_hline
+    inc dx
+    mov cx, [rect_x]
+    add cx, [rect_width]
+    sub cx, 6
+    mov bx, 4
+    call draw_hline
+    
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    pop es
+    pop di
+    pop si
+    pop bp
+    ret
+
+; Draw horizontal line
+; Input: CX=X, DX=Y, BX=Width
+draw_hline:
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+    push es
+    
+    mov ax, 0xA000
+    mov es, ax
+    mov ax, 320
+    mul dx
+    add ax, cx
+    mov di, ax
+    mov al, [rect_color]
+    
+draw_hline_loop:
+    stosb
+    dec bx
+    jnz draw_hline_loop
+    
+    pop es
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; Draw vertical line
+; Input: CX=X, DX=Y, BX=Height
+draw_vline:
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+    push es
+    
+    mov ax, 0xA000
+    mov es, ax
+    
+draw_vline_loop:
+    mov ax, 320
+    mul dx
+    add ax, cx
+    mov di, ax
+    mov al, [rect_color]
+    stosb
+    inc dx
+    dec bx
+    jnz draw_vline_loop
+    
+    pop es
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
 draw_string_8x8:
     push ax
     push bx
@@ -280,7 +485,8 @@ draw_char_8x8:
     push di
     push bp
     push es
-    push ds
+    
+    ; Save position
     mov [char_x], bp
     mov [char_y], dx
     
@@ -289,18 +495,19 @@ draw_char_8x8:
     mov bh, 0
     shl bx, 3            ; BX = char_code * 8
     
-    ; Access font data - DS=0x0000, labels are absolute addresses
-    ; font_8x8 is a label, physical addr = 0 + font_8x8 = font_8x8 ✓
+    ; Access font data using CS prefix (code and data in same segment)
     mov si, font_8x8
     add si, bx           ; SI = font_8x8 + char offset
     
+    ; Set ES to VRAM
     mov ax, 0xA000
     mov es, ax
     mov cx, 8
     mov [char_row], cx
-    xor bx, bx
+    xor bx, bx           ; Row counter
+    
 draw_char_row:
-    mov al, [si]
+    mov al, [cs:si]      ; Use CS prefix to access font data
     inc si
     mov dx, [char_y]
     add dx, bx
@@ -311,10 +518,11 @@ draw_char_row:
     add di, [char_x]
     mov cx, 8
     mov dl, al
+    
 draw_char_pixel:
     test dl, 0x80
     jz skip_pixel
-    mov al, 7
+    mov al, 7            ; White
     stosb
     jmp next_pixel
 skip_pixel:
@@ -325,7 +533,7 @@ next_pixel:
     inc bx
     dec word [char_row]
     jnz draw_char_row
-    pop ds
+    
     pop es
     pop bp
     pop di
