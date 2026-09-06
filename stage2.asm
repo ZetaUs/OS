@@ -2,10 +2,6 @@ bits 16
 org 0x7E00
 
 start:
-    ; Far jump to set CS=0x07E0 so all relative addresses work correctly
-    jmp 0x07E0:start_real
-
-start_real:
     ; Initialize segment registers
     cli
     xor ax, ax
@@ -17,6 +13,15 @@ start_real:
     
     ; DS=0x0000 is correct for org 0x7E00 - labels are absolute addresses
     ; Physical address = DS*16 + offset = 0 + 0x7E00+offset = 0x7E00+offset ✓
+    
+    ; DEBUG: Draw red pixel to confirm stage2 entry
+    push es
+    mov ax, 0xA000
+    mov es, ax
+    mov di, 100 * 320 + 170
+    mov al, 40         ; Red pixel
+    stosb
+    pop es
     
     ; Set VGA mode 0x13 (320x200, 256 colors)
     mov ax, 0x0013
@@ -33,35 +38,12 @@ start_real:
     mov al, 1
     rep stosb
     
-    ; Draw title "Nova OS"
-    mov si, title_msg
-    mov bp, 120
-    mov dx, 10
-    call draw_string_8x8
-    
-    ; Draw "Welcome"
-    mov si, welcome_msg
-    mov bp, 110
-    mov dx, 50
-    call draw_string_8x8
-    
-    ; Draw "Username:"
-    mov si, username_msg
-    mov bp, 40
-    mov dx, 80
-    call draw_string_8x8
-    
-    ; Draw "Password:"
-    mov si, password_msg
-    mov bp, 40
-    mov dx, 110
-    call draw_string_8x8
-    
-    ; Draw "Login"
-    mov si, login_msg
-    mov bp, 130
-    mov dx, 140
-    call draw_string_8x8
+    ; Draw a simple test pixel to confirm we got here
+    mov ax, 0xA000
+    mov es, ax
+    mov di, 100 * 320 + 180
+    mov al, 7          ; White pixel
+    stosb
     
     ; Halt
 halt_s2:

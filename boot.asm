@@ -36,9 +36,27 @@ start:
     int 0x13
     jc disk_error
     
+    ; Draw second green pixel to confirm disk read succeeded
+    push es
+    mov ax, 0xA000
+    mov es, ax
+    mov di, 100 * 320 + 160
+    mov al, 2          ; Green pixel
+    stosb
+    pop es
+    
     ; Print "OK"
     mov si, msg_ok
     call print_string
+    
+    ; Draw third pixel before jump
+    push es
+    mov ax, 0xA000
+    mov es, ax
+    mov di, 100 * 320 + 165
+    mov al, 2          ; Green pixel
+    stosb
+    pop es
     
     ; Jump to stage2
     jmp 0x0000:0x7E00
