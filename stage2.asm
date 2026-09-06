@@ -15,9 +15,8 @@ start_real:
     mov sp, 0x7000     ; Stack below stage2 (stage2 is at 0x7E00)
     sti
     
-    ; Set DS to stage2 segment (0x07E0) for accessing code/data
-    mov ax, 0x07E0
-    mov ds, ax
+    ; DS=0x0000 is correct for org 0x7E00 - labels are absolute addresses
+    ; Physical address = DS*16 + offset = 0 + 0x7E00+offset = 0x7E00+offset ✓
     
     ; Set VGA mode 0x13 (320x200, 256 colors)
     mov ax, 0x0013
@@ -35,31 +34,31 @@ start_real:
     rep stosb
     
     ; Draw title "Nova OS"
-    mov si, title_msg - start
+    mov si, title_msg
     mov bp, 120
     mov dx, 10
     call draw_string_8x8
     
     ; Draw "Welcome"
-    mov si, welcome_msg - start
+    mov si, welcome_msg
     mov bp, 110
     mov dx, 50
     call draw_string_8x8
     
     ; Draw "Username:"
-    mov si, username_msg - start
+    mov si, username_msg
     mov bp, 40
     mov dx, 80
     call draw_string_8x8
     
     ; Draw "Password:"
-    mov si, password_msg - start
+    mov si, password_msg
     mov bp, 40
     mov dx, 110
     call draw_string_8x8
     
     ; Draw "Login"
-    mov si, login_msg - start
+    mov si, login_msg
     mov bp, 130
     mov dx, 140
     call draw_string_8x8
@@ -232,7 +231,6 @@ draw_string_8x8:
     push di
     push bp
     push es
-    push ds
     mov [str_x], bp
     mov [str_y], dx
     
@@ -250,7 +248,6 @@ draw_str_loop:
     add word [str_x], 8
     jmp draw_str_loop
 draw_str_done:
-    pop ds
     pop es
     pop bp
     pop di
@@ -279,14 +276,10 @@ draw_char_8x8:
     mov bh, 0
     shl bx, 3            ; BX = char_code * 8
     
-    ; Access font data relative to stage2 start
-    ; stage2 is at physical 0x7E00, font_8x8 is at some offset from start
-    ; We need: physical_addr = 0x7E00 + (font_8x8 - start) + BX
-    ; With DS=0x07E0, SI=(font_8x8 - start) + BX, physical = 0x07E0*16 + SI = 0x7E00 + SI ✓
-    mov ax, 0x07E0
-    mov ds, ax
-    mov si, font_8x8 - start
-    add si, bx           ; SI = offset from stage2 start + char offset
+    ; Access font data - DS=0x0000, labels are absolute addresses
+    ; font_8x8 is a label, physical addr = 0 + font_8x8 = font_8x8 ✓
+    mov si, font_8x8
+    add si, bx           ; SI = font_8x8 + char offset
     
     mov ax, 0xA000
     mov es, ax
@@ -444,12 +437,14 @@ next_pixel2:
 ;        BP = X position
 ;        DX = Y position
 draw_string_16x16:
+    push ax
     push bx
     push cx
     push dx
     push di
     push bp
     push es
+    push ds
     mov [str16_x], bp
     mov [str16_y], dx
 draw_str16_loop:
@@ -467,12 +462,14 @@ draw_str16_loop:
     add word [str16_x], 16
     jmp draw_str16_loop
 draw_str16_done:
+    pop ds
     pop es
     pop bp
     pop di
     pop dx
     pop cx
     pop bx
+    pop ax
     ret
 
 ; Variables
