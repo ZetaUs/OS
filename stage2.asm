@@ -2,35 +2,11 @@ bits 16
 org 0x7E00
 
 start:
-    ; Initialize segment registers
-    cli
-    xor ax, ax
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
-    mov sp, 0x7000     ; Stack below stage2 (stage2 is at 0x7E00)
-    sti
-    
-    ; DS=0x0000 is correct for org 0x7E00 - labels are absolute addresses
-    ; Physical address = DS*16 + offset = 0 + 0x7E00+offset = 0x7E00+offset ✓
-    
-    ; DEBUG: Draw red pixel to confirm stage2 entry
-    push es
-    mov ax, 0xA000
-    mov es, ax
-    mov di, 100 * 320 + 170
-    mov al, 40         ; Red pixel
-    stosb
-    pop es
-    
-    ; Set VGA mode 0x13 (320x200, 256 colors)
+    ; Set VGA mode 0x13
     mov ax, 0x0013
     int 0x10
     
-    ; Initialize palette first
-    call init_palette
-    
-    ; Fill screen with blue
+    ; Fill screen with blue (color 1)
     mov ax, 0xA000
     mov es, ax
     xor di, di
@@ -38,14 +14,67 @@ start:
     mov al, 1
     rep stosb
     
-    ; Draw a simple test pixel to confirm we got here
-    mov ax, 0xA000
-    mov es, ax
-    mov di, 100 * 320 + 180
-    mov al, 7          ; White pixel
-    stosb
+    ; Initialize palette
+    call init_palette
     
-    ; Halt
+    ; Draw login box (gray box in center)
+    ; Position: X=80, Y=40, Width=160, Height=120
+    mov cx, 80         ; X
+    mov dx, 40         ; Y
+    mov bx, 160        ; Width
+    mov si, 120        ; Height
+    mov al, 2          ; Gray color
+    call draw_rect
+    
+    ; Draw title "Nova OS" at top of login box
+    mov si, title_msg
+    mov bp, 120        ; X position (centered)
+    mov dx, 50         ; Y position
+    call draw_string_8x8
+    
+    ; Draw username label
+    mov si, username_msg
+    mov bp, 90
+    mov dx, 75
+    call draw_string_8x8
+    
+    ; Draw username input box
+    mov cx, 90
+    mov dx, 85
+    mov bx, 140
+    mov si, 16
+    mov al, 3          ; Light gray
+    call draw_rect
+    
+    ; Draw password label
+    mov si, password_msg
+    mov bp, 90
+    mov dx, 110
+    call draw_string_8x8
+    
+    ; Draw password input box
+    mov cx, 90
+    mov dx, 120
+    mov bx, 140
+    mov si, 16
+    mov al, 3          ; Light gray
+    call draw_rect
+    
+    ; Draw login button
+    mov cx, 120
+    mov dx, 145
+    mov bx, 80
+    mov si, 20
+    mov al, 4          ; Red
+    call draw_rect
+    
+    ; Draw "Login" text on button
+    mov si, login_msg
+    mov bp, 132
+    mov dx, 150
+    call draw_string_8x8
+    
+    ; Halt forever
 halt_s2:
     hlt
     jmp halt_s2
@@ -185,13 +214,15 @@ draw_rect_row:
     mov bx, [rect_width]
 draw_rect_col:
     push dx
+    push cx
     mov ax, 320
     mul dx
-    pop dx
+    pop cx
     add ax, cx
     mov di, ax
     mov al, [rect_color]
     stosb
+    pop dx
     inc cx
     dec bx
     jnz draw_rect_col
