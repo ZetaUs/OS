@@ -49,6 +49,36 @@ start:
     mov al, 4          ; Red
     call draw_rect
     
+    ; Draw title "Nova OS" at top center
+    mov si, title_msg
+    mov bp, 120        ; X position (center)
+    mov dx, 8          ; Y position
+    call draw_string_8x8
+    
+    ; Draw "Welcome" below title
+    mov si, welcome_msg
+    mov bp, 115        ; X position
+    mov dx, 50         ; Y position
+    call draw_string_8x8
+    
+    ; Draw "Username:" label
+    mov si, username_msg
+    mov bp, 75         ; X position (aligned with input box)
+    mov dx, 60         ; Y position (above input box)
+    call draw_string_8x8
+    
+    ; Draw "Password:" label
+    mov si, password_msg
+    mov bp, 75         ; X position
+    mov dx, 102        ; Y position (above password box)
+    call draw_string_8x8
+    
+    ; Draw "Login" button text
+    mov si, login_msg
+    mov bp, 135        ; X position (centered on button)
+    mov dx, 156        ; Y position (centered on button)
+    call draw_string_8x8
+    
     ; Halt forever
 halt_s2:
     hlt
@@ -496,8 +526,8 @@ draw_char_8x8:
     shl bx, 3            ; BX = char_code * 8
     
     ; Access font data using CS prefix (code and data in same segment)
-    mov si, font_8x8
-    add si, bx           ; SI = font_8x8 + char offset
+    mov si, font_8x8 - start
+    add si, bx           ; SI = offset within segment + char offset
     
     ; Set ES to VRAM
     mov ax, 0xA000
