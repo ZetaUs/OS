@@ -2,10 +2,6 @@ bits 16
 org 0x7E00
 
 start:
-    ; Far jump to set CS=0x07E0 so all relative addresses work correctly
-    jmp 0x07E0:start_real
-
-start_real:
     ; Initialize segment registers
     cli
     xor ax, ax

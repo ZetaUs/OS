@@ -58,8 +58,8 @@ start:
     stosb
     pop es
     
-    ; Jump to stage2 (load at 0x7E00, use far jump to set CS correctly)
-    jmp 0x0000:0x7E00
+    ; Jump to stage2 (far jump to set CS=0x07E0, IP=0x0000)
+    jmp 0x07E0:0x0000
 
 print_string:
     mov ah, 0x0E
