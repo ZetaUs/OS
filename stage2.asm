@@ -2,6 +2,23 @@ bits 16
 org 0x7E00
 
 start:
+    ; Far jump to set CS=0x07E0 so all relative addresses work correctly
+    jmp 0x07E0:start_real
+
+start_real:
+    ; Initialize segment registers
+    cli
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov sp, 0x7000     ; Stack below stage2 (stage2 is at 0x7E00)
+    sti
+    
+    ; Set DS to stage2 segment for accessing code/data
+    mov ax, 0x07E0
+    mov ds, ax
+    
     ; Set VGA mode 0x13
     mov ax, 0x0013
     int 0x10
@@ -17,69 +34,109 @@ start:
     ; Initialize palette
     call init_palette
     
-    ; Draw login box (gray box, centered)
-    mov cx, 60         ; X
-    mov dx, 25         ; Y
-    mov bx, 200        ; Width
-    mov si, 150        ; Height
+    ; Draw login box (centered, better proportions)
+    mov cx, 40         ; X (more centered)
+    mov dx, 30         ; Y
+    mov bx, 240        ; Width (wider)
+    mov si, 140        ; Height
     mov al, 2          ; Gray color
     call draw_rect
     
     ; Draw username input box
-    mov cx, 75
-    mov dx, 77
-    mov bx, 170
-    mov si, 20
+    mov cx, 55
+    mov dx, 80
+    mov bx, 210
+    mov si, 18
     mov al, 3          ; Light gray
     call draw_rect
     
     ; Draw password input box
-    mov cx, 75
-    mov dx, 119
-    mov bx, 170
-    mov si, 20
+    mov cx, 55
+    mov dx, 115
+    mov bx, 210
+    mov si, 18
     mov al, 3          ; Light gray
     call draw_rect
     
-    ; Draw login button
-    mov cx, 120
-    mov dx, 148
-    mov bx, 80
-    mov si, 24
+    ; Draw login button (centered)
+    mov cx, 100
+    mov dx, 142
+    mov bx, 120
+    mov si, 20
     mov al, 4          ; Red
     call draw_rect
     
     ; Draw title "Nova OS" at top center
-    mov si, title_msg
-    mov bp, 120        ; X position (center)
-    mov dx, 8          ; Y position
+    mov si, title_msg - start
+    mov bp, 110        ; X position (centered for 240px box)
+    mov dx, 10         ; Y position
     call draw_string_8x8
     
     ; Draw "Welcome" below title
-    mov si, welcome_msg
+    mov si, welcome_msg - start
     mov bp, 115        ; X position
-    mov dx, 50         ; Y position
+    mov dx, 55         ; Y position
     call draw_string_8x8
     
     ; Draw "Username:" label
-    mov si, username_msg
-    mov bp, 75         ; X position (aligned with input box)
-    mov dx, 60         ; Y position (above input box)
+    mov si, username_msg - start
+    mov bp, 55         ; X position (aligned with input box)
+    mov dx, 65         ; Y position (above input box)
     call draw_string_8x8
     
     ; Draw "Password:" label
-    mov si, password_msg
-    mov bp, 75         ; X position
-    mov dx, 102        ; Y position (above password box)
+    mov si, password_msg - start
+    mov bp, 55         ; X position
+    mov dx, 100        ; Y position (above password box)
     call draw_string_8x8
     
     ; Draw "Login" button text
-    mov si, login_msg
-    mov bp, 135        ; X position (centered on button)
-    mov dx, 156        ; Y position (centered on button)
+    mov si, login_msg - start
+    mov bp, 125        ; X position (centered on 120px button)
+    mov dx, 148        ; Y position (centered on button)
     call draw_string_8x8
     
-    ; Halt forever
+    ; Initialize mouse
+    call init_mouse
+    
+    ; Store initial mouse position for clearing
+    mov ax, [mouse_x]
+    mov [mouse_prev_x], ax
+    mov ax, [mouse_y]
+    mov [mouse_prev_y], ax
+    
+    ; Main loop - handle mouse
+main_loop:
+    ; Save old position
+    mov ax, [mouse_x]
+    mov [mouse_prev_x], ax
+    mov ax, [mouse_y]
+    mov [mouse_prev_y], ax
+    
+    ; Read new mouse position
+    call read_mouse
+    
+    ; Check if mouse moved
+    mov ax, [mouse_x]
+    mov bx, [mouse_prev_x]
+    cmp ax, bx
+    jne mouse_moved
+    mov ax, [mouse_y]
+    mov bx, [mouse_prev_y]
+    cmp ax, bx
+    je main_loop
+    
+mouse_moved:
+    ; Draw cursor at new position
+    call draw_mouse_cursor
+    
+    ; Small delay
+    mov cx, 500
+delay_loop:
+    loop delay_loop
+    
+    jmp main_loop
+    
 halt_s2:
     hlt
     jmp halt_s2
@@ -723,6 +780,151 @@ draw_str16_done:
     pop ax
     ret
 
+; Initialize mouse (INT 33h)
+init_mouse:
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    ; Reset mouse
+    mov ax, 0
+    int 0x33
+    
+    ; Show mouse cursor
+    mov ax, 1
+    int 0x33
+    
+    ; Set mouse range (320x200)
+    mov ax, 7          ; Set horizontal range
+    mov cx, 0          ; Min X
+    mov dx, 319        ; Max X
+    int 0x33
+    
+    mov ax, 8          ; Set vertical range
+    mov cx, 0          ; Min Y
+    mov dx, 199        ; Max Y
+    int 0x33
+    
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; Read mouse position and buttons
+read_mouse:
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    mov ax, 3          ; Get mouse position and button status
+    int 0x33
+    
+    ; Save position
+    mov [mouse_x], cx
+    mov [mouse_y], dx
+    mov [mouse_buttons], bl
+    
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; Draw mouse cursor (simple crosshair)
+draw_mouse_cursor:
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+    push es
+    push si
+    
+    mov ax, 0xA000
+    mov es, ax
+    
+    mov si, [mouse_y]
+    mov di, [mouse_x]
+    
+    ; Draw crosshair cursor (white)
+    ; Horizontal line: 5 pixels centered
+    push si
+    push di
+    sub di, 2
+    call draw_cursor_pixel_at
+    inc di
+    call draw_cursor_pixel_at
+    inc di
+    call draw_cursor_pixel_at
+    inc di
+    call draw_cursor_pixel_at
+    inc di
+    call draw_cursor_pixel_at
+    pop di
+    pop si
+    
+    ; Vertical line: 5 pixels centered
+    push si
+    push di
+    sub si, 2
+    call draw_cursor_pixel_at
+    inc si
+    call draw_cursor_pixel_at
+    inc si
+    call draw_cursor_pixel_at
+    inc si
+    call draw_cursor_pixel_at
+    inc si
+    call draw_cursor_pixel_at
+    pop di
+    pop si
+    
+    pop si
+    pop es
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; Draw pixel at SI (row), DI (col) - uses ES=0xA000
+draw_cursor_pixel_at:
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    mov dx, si
+    mov cx, di
+    
+    ; Check bounds
+    cmp dx, 199
+    ja draw_cursor_pixel_at_done
+    cmp cx, 319
+    ja draw_cursor_pixel_at_done
+    
+    ; Calculate VRAM offset
+    mov ax, 320
+    mul dx
+    add ax, cx
+    mov bx, ax
+    
+    ; Draw white pixel
+    mov di, bx
+    mov al, 7
+    stosb
+    
+draw_cursor_pixel_at_done:
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
 ; Variables
 rect_x: dw 0
 rect_y: dw 0
@@ -739,6 +941,14 @@ char16_y: dw 0
 char16_row: dw 0
 str16_x: dw 0
 str16_y: dw 0
+
+; Mouse variables
+mouse_x: dw 160
+mouse_y: dw 100
+mouse_buttons: db 0
+mouse_prev_x: dw 0
+mouse_prev_y: dw 0
+mouse_hidden: db 0
 
 ; CHS reading variables
 sectors_left: dw 0
