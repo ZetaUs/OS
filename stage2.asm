@@ -63,6 +63,15 @@ start:
     call draw_rect
     
     ; Draw title "Nova OS" at top center
+    ; DEBUG: Draw red pixel to confirm we reach here
+    push es
+    mov ax, 0xA000
+    mov es, ax
+    mov di, 5 * 320 + 5
+    mov al, 4          ; Red debug pixel
+    stosb
+    pop es
+    
     mov si, title_msg - start
     mov bp, 110        ; X position (centered for 240px box)
     mov dx, 10         ; Y position
