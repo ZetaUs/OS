@@ -58,7 +58,7 @@ start:
     stosb
     pop es
     
-    ; Jump to stage2
+    ; Jump to stage2 (load at 0x7E00, use far jump to set CS correctly)
     jmp 0x0000:0x7E00
 
 print_string:
