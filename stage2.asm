@@ -573,12 +573,10 @@ draw_char_8x8:
     mov [char_x], bp
     mov [char_y], dx
     
-    ; Calculate font data offset: 512 + ((char_code - 0x40) * 8)
-    sub al, 0x40         ; Convert ASCII to font index (font starts at '@' = 64)
+    ; Calculate font data offset: char_code * 8
     mov bl, al
     mov bh, 0
-    shl bx, 3            ; BX = (char_code - 0x40) * 8
-    add bx, 512          ; Add offset for ASCII 0-63 empty space
+    shl bx, 3            ; BX = char_code * 8
     
     ; Access font data using CS prefix (code and data in same segment)
     mov si, font_8x8 - start
