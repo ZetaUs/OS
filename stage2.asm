@@ -573,10 +573,12 @@ draw_char_8x8:
     mov [char_x], bp
     mov [char_y], dx
     
-    ; Calculate font data offset: (char_code * 8)
+    ; Calculate font data offset: 512 + ((char_code - 0x40) * 8)
+    sub al, 0x40         ; Convert ASCII to font index (font starts at '@' = 64)
     mov bl, al
     mov bh, 0
-    shl bx, 3            ; BX = char_code * 8
+    shl bx, 3            ; BX = (char_code - 0x40) * 8
+    add bx, 512          ; Add offset for ASCII 0-63 empty space
     
     ; Access font data using CS prefix (code and data in same segment)
     mov si, font_8x8 - start
@@ -979,8 +981,20 @@ login_msg:    db 'Login', 0
 ; 8x8 font data - complete table for ASCII 0-127
 ; Each character is 8 bytes
 font_8x8:
-    ; ASCII 0-63: empty
-    times 64*8 db 0
+    ; ASCII 0-31: empty
+    times 32*8 db 0
+    
+    ; ASCII 32: space
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    
+    ; ASCII 33-57: empty (except we'll add colon at 58)
+    times 25*8 db 0
+    
+    ; ASCII 58: colon ':'
+    db 0x00,0x18,0x18,0x00,0x18,0x18,0x00,0x00
+    
+    ; ASCII 59-63: empty
+    times 5*8 db 0
     
     ; ASCII 64-95
     ; '@' (64)
