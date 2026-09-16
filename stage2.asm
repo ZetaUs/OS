@@ -587,9 +587,9 @@ draw_char_8x8:
     mov bh, 0
     shl bx, 3            ; BX = char_code * 8
     
-    ; Access font data using CS prefix (code and data in same segment)
-    mov si, font_8x8 - start
-    add si, bx           ; SI = offset within segment + char offset
+    ; Access font data using DS (DS=0x07E0, same as code segment)
+    mov si, font_8x8
+    add si, bx           ; SI = font_8x8 offset + char offset
     
     ; Set ES to VRAM
     mov ax, 0xA000
@@ -599,8 +599,7 @@ draw_char_8x8:
     xor bx, bx           ; Row counter
     
 draw_char_row:
-    mov al, [cs:si]      ; Use CS prefix to access font data
-    inc si
+    lodsb                ; AL = [DS:SI], SI++
     mov dx, [char_y]
     add dx, bx
     mov bp, dx
@@ -615,7 +614,8 @@ draw_char_pixel:
     test dl, 0x80
     jz skip_pixel
     mov al, 7            ; White
-    stosb
+    mov [es:di], al      ; Write to VRAM
+    inc di
     jmp next_pixel
 skip_pixel:
     inc di

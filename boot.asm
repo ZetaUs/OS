@@ -17,15 +17,10 @@ start:
     mov ax, 0x0013
     int 0x10
     
-    ; Read stage2 using CHS (int 0x13 ah=0x02)
-    ; Read 6 sectors from cylinder 0, head 0, sector 2
-    mov ah, 0x02
-    mov al, 6          ; Number of sectors (3KB, stage2 is ~2.5KB)
-    mov ch, 0          ; Cylinder 0
-    mov cl, 2          ; Sector 2
-    mov dh, 0          ; Head 0
+    ; Read stage2 using LBA (int 0x13 ah=0x42)
+    mov ah, 0x42
     mov dl, [boot_drive]
-    mov bx, 0x7E00     ; ES:BX = 0x0000:0x7E00
+    mov si, dap
     int 0x13
     jc disk_error
     
@@ -59,11 +54,11 @@ print_string:
 
 ; Disk Address Packet for LBA read (16 bytes)
 dap:
-    db 0x10          ; [0] Packet size = 16
-    db 0x00          ; [1] Reserved = 0
-    dw 6             ; [2-3] Number of sectors to read = 6
-    dw 0x7E00        ; [4-5] Buffer offset
-    dw 0x0000        ; [6-7] Buffer segment
+    db 0x10          ; [0] Packet size = 16 bytes
+    db 0x00          ; [1] Reserved
+    dw 8             ; [2-3] Number of sectors to read = 8 (4KB)
+    dw 0x0000        ; [4-5] Buffer offset = 0x0000
+    dw 0x07E0        ; [6-7] Buffer segment = 0x07E0 (physical 0x7E00)
     dd 1             ; [8-11] Starting LBA = 1
     dd 0             ; [12-15] LBA high = 0
 
