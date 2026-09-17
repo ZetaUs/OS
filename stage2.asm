@@ -196,9 +196,9 @@ draw_rect_fast_col:
     pop bp
     ret
 
-; Draw HZK12 character using BIOS int 0x10
+; Draw HZK12 character using 10x10 rectangles for visibility
 ; Input: SI = pointer to HZK12 data (16 words, 32 bytes)
-;        [font_x], [font_y] = position
+;        [font_x], [font_y] = starting position (will NOT be modified)
 draw_hz_char:
     push bp
     push si
@@ -207,16 +207,16 @@ draw_hz_char:
     push cx
     push dx
     
-    mov word [char_row], 0
+    xor bp, bp        ; BP = current row (0-15)
 
 hzk_draw_row:
-    cmp word [char_row], 16
+    cmp bp, 16
     jae hzk_draw_done
     
     mov ax, [si]
     add si, 2
-    mov cx, 16
-    mov dx, [font_x]
+    mov cx, 16        ; CX = column counter
+    mov dx, [font_x]  ; DX = current X position
 
 hzk_draw_col:
     test ax, 0x8000
@@ -230,13 +230,10 @@ hzk_draw_col:
     
     mov di, dx
     mov bx, [font_y]
-    add bx, [char_row]
-    mov cx, di          ; CX = X
-    mov dx, bx          ; DX = Y
-    mov ah, 0x0c
-    mov al, 0          ; Black
-    xor bh, bh
-    int 0x10
+    add bx, bp        ; Y = font_y + row
+    mov cx, 10        ; Width = 10
+    mov dx, 10        ; Height = 10
+    call draw_rect_12h
     
     pop dx
     pop bp
@@ -246,10 +243,10 @@ hzk_draw_col:
 
 hzk_draw_skip:
     shl ax, 1
-    inc dx              ; Move to next pixel column
+    add dx, 12        ; X += 12 (spacing between columns)
     loop hzk_draw_col
     
-    inc word [char_row]
+    inc bp            ; Next row
     jmp hzk_draw_row
 
 hzk_draw_done:
@@ -259,6 +256,34 @@ hzk_draw_done:
     pop di
     pop si
     pop bp
+    ret
+
+; Draw 10x10 rectangle for HZK12 pixel
+; Input: DI=X, BX=Y, CX=Width, DX=Height
+draw_rect_12h:
+    mov [rect_x], di
+    mov [rect_y], bx
+    mov [rect_w], cx
+    mov bp, dx
+
+rect_12h_row:
+    mov si, [rect_w]
+    mov di, [rect_x]
+    mov dx, [rect_y]
+
+rect_12h_pixel:
+    mov cx, di
+    mov ah, 0x0c
+    mov al, 0x0F      ; White
+    xor bh, bh
+    int 0x10
+    inc di
+    dec si
+    jnz rect_12h_pixel
+    
+    inc word [rect_y]
+    dec bp
+    jnz rect_12h_row
     ret
 
 ; Draw HZK12 string
