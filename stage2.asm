@@ -10,86 +10,80 @@ start:
     mov sp, 0x7000
     sti
     
-    mov ax, 0x07E0
-    mov ds, ax
-    
-    mov ax, 0x0013
+    ; Switch to VGA mode 0x12 (640x480, 16 colors)
+    mov ax, 0x0012
     int 0x10
     
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 64000
-    mov al, 1
-    rep stosb
-    
-    call init_palette
-    
-    mov cx, 40
-    mov dx, 30
-    mov bx, 240
-    mov si, 140
-    mov al, 2
+    ; Draw background (blue)
+    mov cx, 0
+    mov dx, 0
+    mov bx, 640
+    mov si, 480
+    mov al, 1          ; Blue
     call draw_rect
     
-    mov cx, 55
+    ; Draw login box (gray)
+    mov cx, 120
     mov dx, 80
-    mov bx, 210
-    mov si, 18
-    mov al, 3
+    mov bx, 400
+    mov si, 320
+    mov al, 7          ; White/Light gray
     call draw_rect
     
-    mov cx, 55
-    mov dx, 115
-    mov bx, 210
-    mov si, 18
-    mov al, 3
+    ; Draw input fields (darker gray)
+    mov cx, 140
+    mov dx, 160
+    mov bx, 360
+    mov si, 30
+    mov al, 8          ; Dark gray
     call draw_rect
     
-    mov cx, 100
-    mov dx, 142
-    mov bx, 120
-    mov si, 20
-    mov al, 4
+    mov cx, 140
+    mov dx, 220
+    mov bx, 360
+    mov si, 30
+    mov al, 8
     call draw_rect
     
-    ; Draw title "Nova OS" using 8x8 font
-    mov si, title_msg
-    mov bp, 110
-    mov dx, 10
-    call draw_string_8x8
+    ; Draw login button (red)
+    mov cx, 220
+    mov dx, 280
+    mov bx, 200
+    mov si, 40
+    mov al, 4          ; Red
+    call draw_rect
     
-    ; DEBUG: Yellow pixel at (110, 10) to verify position
-    mov ax, 0xA000
-    mov es, ax
-    mov di, 10 * 320 + 110
-    mov al, 14
-    stosb
+    ; Draw "Nova OS" title using HZK12
+    mov si, title_hz
+    mov word [font_x], 250
+    mov word [font_y], 100
+    call draw_hz_string
     
-    ; Draw "Welcome"
-    mov si, welcome_msg
-    mov bp, 115
-    mov dx, 55
-    call draw_string_8x8
+    ; Draw "Welcome" using HZK12
+    mov si, welcome_hz
+    mov word [font_x], 260
+    mov word [font_y], 130
+    call draw_hz_string
     
-    ; Draw "Username:"
-    mov si, username_msg
-    mov bp, 55
-    mov dx, 65
-    call draw_string_8x8
+    ; Draw "Username:" using HZK12
+    mov si, username_hz
+    mov word [font_x], 150
+    mov word [font_y], 165
+    call draw_hz_string
     
-    ; Draw "Password:"
-    mov si, password_msg
-    mov bp, 55
-    mov dx, 100
-    call draw_string_8x8
+    ; Draw "Password:" using HZK12
+    mov si, password_hz
+    mov word [font_x], 150
+    mov word [font_y], 225
+    call draw_hz_string
     
-    ; Draw "Login"
-    mov si, login_msg
-    mov bp, 125
-    mov dx, 148
-    call draw_string_8x8
+    ; Draw "Login" using HZK12
+    mov si, login_hz
+    mov word [font_x], 280
+    mov word [font_y], 290
+    call draw_hz_string
     
+    ; Initialize mouse
     call init_mouse
     
     mov ax, [mouse_x]
@@ -127,77 +121,8 @@ halt_s2:
     hlt
     jmp halt_s2
 
-init_palette:
-    push ax
-    push bx
-    push cx
-    push dx
-    
-    mov dx, 0x03C8
-    mov al, 0
-    out dx, al
-    inc dx
-    
-    xor al, al
-    out dx, al
-    out dx, al
-    out dx, al
-    
-    mov al, 0
-    out dx, al
-    mov al, 0
-    out dx, al
-    mov al, 42
-    out dx, al
-    
-    mov al, 32
-    out dx, al
-    mov al, 32
-    out dx, al
-    mov al, 32
-    out dx, al
-    
-    mov al, 42
-    out dx, al
-    mov al, 42
-    out dx, al
-    mov al, 42
-    out dx, al
-    
-    mov al, 63
-    out dx, al
-    xor al, al
-    out dx, al
-    xor al, al
-    out dx, al
-    
-    mov al, 21
-    out dx, al
-    mov al, 21
-    out dx, al
-    mov al, 21
-    out dx, al
-    
-    xor al, al
-    out dx, al
-    mov al, 63
-    out dx, al
-    xor al, al
-    out dx, al
-    
-    mov al, 63
-    out dx, al
-    mov al, 63
-    out dx, al
-    mov al, 63
-    out dx, al
-    
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-
+; Draw rectangle using BIOS int 0x10
+; Input: CX=X, DX=Y, BX=Width, SI=Height, AL=Color
 draw_rect:
     push bp
     push si
@@ -208,57 +133,125 @@ draw_rect:
     mov [rect_width], bx
     mov [rect_height], si
     mov [rect_color], al
-    mov ax, 0xA000
-    mov es, ax
-    mov dx, [rect_y]
+    
 draw_rect_row:
     mov cx, [rect_x]
     mov bx, [rect_width]
 draw_rect_col:
     push dx
     push cx
-    mov ax, 320
-    mul dx
-    pop cx
-    add ax, cx
-    mov di, ax
+    mov di, cx
+    mov bx, [rect_y]
+    mov cx, 1
+    mov dx, 1
+    mov ah, 0x0c
     mov al, [rect_color]
-    stosb
+    xor bh, bh
+    int 0x10
+    pop cx
     pop dx
     inc cx
-    dec bx
+    dec word [rect_width]
     jnz draw_rect_col
-    inc dx
+    inc word [rect_y]
     dec word [rect_height]
     jnz draw_rect_row
+    
     pop es
     pop di
     pop si
     pop bp
     ret
 
-draw_string_8x8:
+; Draw HZK12 character
+; Input: SI = pointer to HZK12 data (16 words, 32 bytes)
+;        [font_x], [font_y] = position
+draw_hz_char:
+    push bp
+    push si
+    push di
+    push bx
+    push cx
+    push dx
+    
+    mov word [char_row], 0
+
+hzk_draw_row:
+    cmp word [char_row], 16
+    jae hzk_draw_done
+    
+    mov ax, [si]
+    add si, 2
+    mov cx, 16
+    mov dx, [font_x]
+
+hzk_draw_col:
+    test ax, 0x8000
+    jz hzk_draw_skip
+    
+    push ax
+    push cx
+    push si
+    push bp
+    push dx
+    
+    mov di, dx
+    mov bx, [font_y]
+    add bx, [char_row]
+    mov cx, 1
+    mov dx, 1
+    mov ah, 0x0c
+    mov al, 0          ; Black
+    xor bh, bh
+    int 0x10
+    
+    pop dx
+    pop bp
+    pop si
+    pop cx
+    pop ax
+
+hzk_draw_skip:
+    shl ax, 1
+    add dx, 12
+    loop hzk_draw_col
+    
+    inc word [char_row]
+    jmp hzk_draw_row
+
+hzk_draw_done:
+    pop dx
+    pop cx
+    pop bx
+    pop di
+    pop si
+    pop bp
+    ret
+
+; Draw HZK12 string
+; Input: SI = pointer to string (each char is 32 bytes)
+;        Terminated by 0x0000
+draw_hz_string:
     push bx
     push cx
     push dx
     push si
     push di
     push bp
-    mov [str_x], bp
-    mov [str_y], dx
+
+draw_hz_str_loop:
+    mov ax, [si]
+    test ax, ax
+    jz draw_hz_str_done
     
-draw_str_loop:
-    lodsb
-    test al, al
-    jz draw_str_done
     push si
-    mov bp, [str_x]
-    mov dx, [str_y]
-    call draw_char_8x8
+    call draw_hz_char
     pop si
-    add word [str_x], 8
-    jmp draw_str_loop
-draw_str_done:
+    add si, 32
+    add word [font_x], 24    ; 12 pixels width + 12 pixels spacing
+    jmp draw_hz_str_loop
+
+draw_hz_str_done:
     pop bp
     pop di
     pop si
@@ -267,70 +260,7 @@ draw_str_done:
     pop bx
     ret
 
-draw_char_8x8:
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-    push bp
-    push es
-    
-    mov [char_x], bp
-    mov [char_y], dx
-    
-    mov bl, al
-    mov bh, 0
-    shl bx, 3
-    
-    mov si, font_8x8
-    add si, bx
-    
-    mov ax, 0xA000
-    mov es, ax
-    mov cx, 8
-    mov [char_row], cx
-    xor bx, bx
-    
-draw_char_row:
-    mov cl, [si]      ; CL = 字体行数据（保存）
-    inc si
-    mov dx, [char_y]
-    add dx, bx
-    push dx           ; 保存Y坐标
-    mov ax, 320
-    mul dx            ; DX:AX = 320 * Y
-    pop dx            ; 恢复Y坐标（虽然不需要了）
-    mov di, ax
-    add di, [char_x]
-    mov ch, 8
-    mov dl, cl        ; DL = 字体行数据
-    
-draw_char_pixel:
-    test dl, 0x80
-    jz skip_pixel
-    mov al, 7
-    stosb
-    jmp next_pixel
-skip_pixel:
-    inc di
-next_pixel:
-    shl dl, 1
-    dec ch
-    jnz draw_char_pixel
-    inc bx
-    dec word [char_row]
-    jnz draw_char_row
-    
-    pop es
-    pop bp
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    ret
-
+; Initialize mouse
 init_mouse:
     push ax
     push bx
@@ -345,12 +275,12 @@ init_mouse:
     
     mov ax, 7
     mov cx, 0
-    mov dx, 319
+    mov dx, 639
     int 0x33
     
     mov ax, 8
     mov cx, 0
-    mov dx, 199
+    mov dx, 479
     int 0x33
     
     pop dx
@@ -359,6 +289,7 @@ init_mouse:
     pop ax
     ret
 
+; Read mouse position
 read_mouse:
     push ax
     push bx
@@ -378,53 +309,50 @@ read_mouse:
     pop ax
     ret
 
+; Draw mouse cursor
 draw_mouse_cursor:
     push ax
     push bx
     push cx
     push dx
     push di
-    push es
     push si
-    
-    mov ax, 0xA000
-    mov es, ax
     
     mov si, [mouse_y]
     mov di, [mouse_x]
     
+    ; Draw cross cursor (5x5)
     push si
     push di
     sub di, 2
-    call draw_cursor_pixel_at
+    call draw_cursor_pixel
     inc di
-    call draw_cursor_pixel_at
+    call draw_cursor_pixel
     inc di
-    call draw_cursor_pixel_at
+    call draw_cursor_pixel
     inc di
-    call draw_cursor_pixel_at
+    call draw_cursor_pixel
     inc di
-    call draw_cursor_pixel_at
+    call draw_cursor_pixel
     pop di
     pop si
     
     push si
     push di
     sub si, 2
-    call draw_cursor_pixel_at
+    call draw_cursor_pixel
     inc si
-    call draw_cursor_pixel_at
+    call draw_cursor_pixel
     inc si
-    call draw_cursor_pixel_at
+    call draw_cursor_pixel
     inc si
-    call draw_cursor_pixel_at
+    call draw_cursor_pixel
     inc si
-    call draw_cursor_pixel_at
+    call draw_cursor_pixel
     pop di
     pop si
     
     pop si
-    pop es
     pop di
     pop dx
     pop cx
@@ -432,7 +360,7 @@ draw_mouse_cursor:
     pop ax
     ret
 
-draw_cursor_pixel_at:
+draw_cursor_pixel:
     push ax
     push bx
     push cx
@@ -441,118 +369,183 @@ draw_cursor_pixel_at:
     mov dx, si
     mov cx, di
     
-    cmp dx, 199
-    ja draw_cursor_pixel_at_done
-    cmp cx, 319
-    ja draw_cursor_pixel_at_done
+    cmp dx, 479
+    ja draw_cursor_done
+    cmp cx, 639
+    ja draw_cursor_done
     
-    mov ax, 320
-    mul dx
-    add ax, cx
-    mov bx, ax
+    mov ah, 0x0c
+    mov al, 15         ; White
+    xor bh, bh
+    int 0x10
     
-    mov di, bx
-    mov al, 7
-    stosb
-    
-draw_cursor_pixel_at_done:
+draw_cursor_done:
     pop dx
     pop cx
     pop bx
     pop ax
     ret
 
+; Variables
 rect_x: dw 0
 rect_y: dw 0
 rect_width: dw 0
 rect_height: dw 0
 rect_color: db 0
-str_x: dw 0
-str_y: dw 0
-char_x: dw 0
-char_y: dw 0
+font_x: dw 0
+font_y: dw 0
 char_row: dw 0
 
-mouse_x: dw 160
-mouse_y: dw 100
+mouse_x: dw 320
+mouse_y: dw 240
 mouse_buttons: db 0
 mouse_prev_x: dw 0
 mouse_prev_y: dw 0
-mouse_hidden: db 0
 
-title_msg:    db 'Nova OS', 0
-welcome_msg:  db 'Welcome', 0
-username_msg: db 'Username:', 0
-password_msg: db 'Password:', 0
-login_msg:    db 'Login', 0
+; HZK12 font data for "Nova OS" (simplified ASCII representation)
+; Each character: 16 rows x 2 bytes = 32 bytes
+; Using simple patterns for demonstration
 
-font_8x8:
-    times 32*8 db 0
-    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    times 25*8 db 0
-    db 0x00,0x18,0x18,0x00,0x18,0x18,0x00,0x00
-    times 5*8 db 0
-    db 0x3C,0x42,0x99,0xA5,0xA5,0x99,0x42,0x3C
-    db 0x18,0x3C,0x66,0x66,0x7E,0x66,0x66,0x00
-    db 0x7C,0x66,0x66,0x7C,0x66,0x66,0x7C,0x00
-    db 0x3C,0x66,0x60,0x60,0x60,0x66,0x3C,0x00
-    db 0x78,0x6C,0x66,0x66,0x66,0x6C,0x78,0x00
-    db 0x7E,0x60,0x60,0x7C,0x60,0x60,0x7E,0x00
-    db 0x7E,0x60,0x60,0x7C,0x60,0x60,0x60,0x00
-    db 0x3C,0x66,0x60,0x6E,0x66,0x66,0x3C,0x00
-    db 0x66,0x66,0x66,0x7E,0x66,0x66,0x66,0x00
-    db 0x3C,0x18,0x18,0x18,0x18,0x18,0x3C,0x00
-    db 0x1E,0x0C,0x0C,0x0C,0x0C,0x6C,0x38,0x00
-    db 0x66,0x6C,0x78,0x70,0x78,0x6C,0x66,0x00
-    db 0x60,0x60,0x60,0x60,0x60,0x60,0x7E,0x00
-    db 0x63,0x77,0x7F,0x6B,0x63,0x63,0x63,0x00
-    db 0x66,0x76,0x7E,0x7E,0x6E,0x66,0x66,0x00
-    db 0x3C,0x66,0x66,0x66,0x66,0x66,0x3C,0x00
-    db 0x7C,0x66,0x66,0x7C,0x60,0x60,0x60,0x00
-    db 0x3C,0x66,0x66,0x66,0x6A,0x6C,0x36,0x00
-    db 0x7C,0x66,0x66,0x7C,0x78,0x6C,0x66,0x00
-    db 0x3C,0x66,0x60,0x3C,0x06,0x66,0x3C,0x00
-    db 0x7E,0x18,0x18,0x18,0x18,0x18,0x18,0x00
-    db 0x66,0x66,0x66,0x66,0x66,0x66,0x3C,0x00
-    db 0x66,0x66,0x66,0x66,0x66,0x3C,0x18,0x00
-    db 0x63,0x63,0x63,0x6B,0x7F,0x77,0x63,0x00
-    db 0x66,0x66,0x3C,0x18,0x3C,0x66,0x66,0x00
-    db 0x66,0x66,0x66,0x3C,0x18,0x18,0x18,0x00
-    db 0x7E,0x06,0x0C,0x18,0x30,0x60,0x7E,0x00
-    db 0x3C,0x30,0x30,0x30,0x30,0x30,0x3C,0x00
-    db 0x00,0x60,0x30,0x18,0x0C,0x06,0x00,0x00
-    db 0x3C,0x0C,0x0C,0x0C,0x0C,0x0C,0x3C,0x00
-    db 0x18,0x3C,0x66,0x00,0x00,0x00,0x00,0x00
-    db 0x00,0x00,0x00,0x00,0x00,0x00,0x7E,0x00
-    db 0x30,0x18,0x00,0x00,0x00,0x00,0x00,0x00
-    db 0x00,0x00,0x3C,0x06,0x3E,0x66,0x3E,0x00
-    db 0x60,0x60,0x7C,0x66,0x66,0x66,0x7C,0x00
-    db 0x00,0x00,0x3C,0x60,0x60,0x60,0x3C,0x00
-    db 0x06,0x06,0x3E,0x66,0x66,0x66,0x3E,0x00
-    db 0x00,0x00,0x3C,0x66,0x7E,0x60,0x3C,0x00
-    db 0x1C,0x06,0x06,0x3E,0x06,0x06,0x06,0x00
-    db 0x00,0x00,0x3E,0x66,0x66,0x3E,0x06,0x3C
-    db 0x60,0x60,0x7C,0x66,0x66,0x66,0x66,0x00
-    db 0x18,0x00,0x18,0x18,0x18,0x18,0x3C,0x00
-    db 0x0C,0x00,0x0C,0x0C,0x0C,0x0C,0x6C,0x38
-    db 0x60,0x60,0x6C,0x78,0x78,0x6C,0x66,0x00
-    db 0x18,0x18,0x18,0x18,0x18,0x18,0x3C,0x00
-    db 0x00,0x00,0x66,0x7F,0x7F,0x6B,0x63,0x00
-    db 0x00,0x00,0x7C,0x66,0x66,0x66,0x66,0x00
-    db 0x00,0x00,0x3C,0x66,0x66,0x66,0x3C,0x00
-    db 0x00,0x00,0x7C,0x66,0x66,0x7C,0x60,0x60
-    db 0x00,0x00,0x3E,0x66,0x66,0x3E,0x06,0x06
-    db 0x00,0x00,0x7C,0x66,0x60,0x60,0x60,0x00
-    db 0x00,0x00,0x3E,0x60,0x3C,0x06,0x7C,0x00
-    db 0x06,0x06,0x3E,0x06,0x06,0x06,0x1C,0x00
-    db 0x00,0x00,0x66,0x66,0x66,0x66,0x3E,0x00
-    db 0x00,0x00,0x66,0x66,0x66,0x3C,0x18,0x00
-    db 0x00,0x00,0x63,0x6B,0x7F,0x7F,0x36,0x00
-    db 0x00,0x00,0x66,0x3C,0x18,0x3C,0x66,0x00
-    db 0x00,0x00,0x66,0x66,0x66,0x3E,0x06,0x3C
-    db 0x00,0x00,0x7E,0x0C,0x18,0x30,0x7E,0x00
-    db 0x1C,0x06,0x06,0x06,0x06,0x06,0x1C,0x00
-    db 0x18,0x18,0x18,0x00,0x18,0x18,0x18,0x00
-    db 0xE0,0x60,0x60,0x60,0x60,0x60,0xE0,0x00
-    db 0x76,0xDC,0x00,0x00,0x00,0x00,0x00,0x00
-    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+title_hz:
+    ; 'N' - 16x12 bitmap
+    dw 0x8001, 0x8001
+    dw 0xC003, 0xC003
+    dw 0xE007, 0xE007
+    dw 0xF00F, 0xF00F
+    dw 0xF81F, 0xF81F
+    dw 0xFC3F, 0xFC3F
+    dw 0xFE7F, 0xFE7F
+    dw 0xFFFF, 0xFFFF
+    dw 0xFFFF, 0xFFFF
+    dw 0xFF7F, 0xFF7F
+    dw 0xFE3F, 0xFE3F
+    dw 0xFC1F, 0xFC1F
+    dw 0xF80F, 0xF80F
+    dw 0xF007, 0xF007
+    dw 0xE003, 0xE003
+    dw 0xC001, 0xC001
+    
+    ; 'o' - 16x12 bitmap
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x3FFC, 0x3FFC
+    dw 0x7FFE, 0x7FFE
+    dw 0xE007, 0xE007
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0xE007, 0xE007
+    dw 0x7FFE, 0x7FFE
+    dw 0x3FFC, 0x3FFC
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    
+    ; 'v' - 16x12 bitmap
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x8001, 0x8001
+    dw 0x8001, 0x8001
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0x6006, 0x6006
+    dw 0x6006, 0x6006
+    dw 0x300C, 0x300C
+    dw 0x300C, 0x300C
+    dw 0x1818, 0x1818
+    dw 0x1818, 0x1818
+    dw 0x0FF0, 0x0FF0
+    dw 0x0FF0, 0x0FF0
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    
+    ; 'a' - 16x12 bitmap
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0FF0, 0x0FF0
+    dw 0x1FF8, 0x1FF8
+    dw 0x300C, 0x300C
+    dw 0x300C, 0x300C
+    dw 0x3FFC, 0x3FFC
+    dw 0x3FFC, 0x3FFC
+    dw 0x300C, 0x300C
+    dw 0x300C, 0x300C
+    dw 0x300C, 0x300C
+    dw 0x3FFC, 0x3FFC
+    dw 0x1FF8, 0x1FF8
+    dw 0x0FF0, 0x0FF0
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    
+    ; ' ' - space
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    
+    ; 'O' - 16x12 bitmap
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x3FFC, 0x3FFC
+    dw 0x7FFE, 0x7FFE
+    dw 0xE007, 0xE007
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0xE007, 0xE007
+    dw 0x7FFE, 0x7FFE
+    dw 0x3FFC, 0x3FFC
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    
+    ; 'S' - 16x12 bitmap
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x3FFC, 0x3FFC
+    dw 0x7FFE, 0x7FFE
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0x3FFC, 0x3FFC
+    dw 0x7FFE, 0x7FFE
+    dw 0xE007, 0xE007
+    dw 0xC003, 0xC003
+    dw 0xC003, 0xC003
+    dw 0x7FFE, 0x7FFE
+    dw 0x3FFC, 0x3FFC
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    dw 0x0000, 0x0000
+    
+    ; Terminator
+    dw 0x0000, 0x0000
+
+welcome_hz:
+    ; 'W' - 16x12 bitmap
+    dw 0x8001, 0x8001
+    dw 0x8001, 0x8001
+    dw 0x8001, 0x8001
+    dw 0x8001, 0x8001
+    dw 0x8001, 0x8001
+    dw 0x8001, 0x8001
+    dw 0x8001, 0x8001
+    dw 0x8001, 0x8001
+    dw 0x8001, 0x8001
+    dw 0x8001, 0x8001
+    dw 0x8001, 0x8
