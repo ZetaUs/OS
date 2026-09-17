@@ -299,7 +299,7 @@ draw_char_row:
     add dx, bx
     mov bp, dx
     mov ax, 320
-    mul dx
+    mul word [bp]     ; AX = 320 * Y坐标
     mov di, ax
     add di, [char_x]
     mov ch, 8
