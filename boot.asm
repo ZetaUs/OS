@@ -12,6 +12,8 @@ start:
     
     ; Save boot drive number
     mov [boot_drive], dl
+    ; Copy to stage2's boot_drive location (at offset 0x200 in stage2)
+    mov byte [0x7E00 + 0x200], dl
     
     ; Set VGA mode 0x13 (320x200, 256 colors)
     mov ax, 0x0013
@@ -60,6 +62,16 @@ dap:
     dw 0x7E00        ; [4-5] Buffer offset = 0x7E00
     dw 0x0000        ; [6-7] Buffer segment = 0x0000 (physical 0x7E00)
     dd 1             ; [8-11] Starting LBA = 1
+    dd 0             ; [12-15] LBA high = 0
+
+; DAP for HZK12 loading (used by stage2)
+hzk_dap:
+    db 0x10          ; [0] Packet size = 16 bytes
+    db 0x00          ; [1] Reserved
+    dw 384           ; [2-3] Number of sectors = 384 (196272 bytes)
+    dw 0x0000        ; [4-5] Buffer offset = 0x0000
+    dw 0x1000        ; [6-7] Buffer segment = 0x1000 (physical 0x10000)
+    dd 65            ; [8-11] Starting LBA = 65 (after stage2)
     dd 0             ; [12-15] LBA high = 0
 
 msg_err: db 'ERR', 0

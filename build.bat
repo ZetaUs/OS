@@ -18,11 +18,11 @@ if errorlevel 1 exit /b 1
 
 echo [3/4] Building disk image...
 
-:: Create a simple hard disk image without logo and HZK16
 :: Layout:
 ::   LBA 0: boot sector (512 bytes)
 ::   LBA 1-64: stage2 (32KB)
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$boot=[System.IO.File]::ReadAllBytes('%OUT%\boot.bin'); $stage2=[System.IO.File]::ReadAllBytes('%OUT%\stage2.bin'); $imgSize=16*63*200*512; $pad=New-Object byte[] ($imgSize-512-32768); $img=New-Object byte[] $imgSize; $boot.CopyTo($img,0); $stage2.CopyTo($img,512); $pad.CopyTo($img,512+32768); [System.IO.File]::WriteAllBytes('%OUT%\nova-os.img',$img)"
+::   LBA 65+: HZK12 font
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$boot=[System.IO.File]::ReadAllBytes('%OUT%\boot.bin'); $stage2=[System.IO.File]::ReadAllBytes('%OUT%\stage2.bin'); $hzk12=[System.IO.File]::ReadAllBytes('%~dp0HZK\HZK12'); $imgSize=16*63*200*512; $pad=New-Object byte[] ($imgSize-512-32768-$hzk12.Length); $img=New-Object byte[] $imgSize; $boot.CopyTo($img,0); $stage2.CopyTo($img,512); $hzk12.CopyTo($img,512+32768); $pad.CopyTo($img,512+32768+$hzk12.Length); [System.IO.File]::WriteAllBytes('%OUT%\nova-os.img',$img)"
 
 :: Also create a floppy image for testing
 powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$boot=[System.IO.File]::ReadAllBytes('%OUT%\boot.bin'); $stage2=[System.IO.File]::ReadAllBytes('%OUT%\stage2.bin'); $imgSize=1474560; $pad=New-Object byte[] ($imgSize-512-32768); $img=New-Object byte[] $imgSize; $boot.CopyTo($img,0); $stage2.CopyTo($img,512); $pad.CopyTo($img,512+32768); [System.IO.File]::WriteAllBytes('%OUT%\nova-os-floppy.img',$img)"

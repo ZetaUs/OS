@@ -2,24 +2,20 @@ bits 16
 org 0x7E00
 
 start:
-    ; Initialize segment registers
     cli
     xor ax, ax
     mov ds, ax
     mov es, ax
     mov ss, ax
-    mov sp, 0x7000     ; Stack below stage2 (stage2 is at 0x7E00)
+    mov sp, 0x7000
     sti
     
-    ; Set DS to stage2 segment for accessing code/data
     mov ax, 0x07E0
     mov ds, ax
     
-    ; Set VGA mode 0x13
     mov ax, 0x0013
     int 0x10
     
-    ; Fill screen with blue (color 1)
     mov ax, 0xA000
     mov es, ax
     xor di, di
@@ -27,122 +23,84 @@ start:
     mov al, 1
     rep stosb
     
-    ; DEBUG: Yellow pixel at (2,2) - stage2 started
-    mov di, 2 * 320 + 2
-    mov al, 14         ; Yellow
-    stosb
-    
-    ; Initialize palette
     call init_palette
     
-    ; DEBUG: Cyan pixel at (3,3) - palette init done
-    mov ax, 0xA000
-    mov es, ax
-    mov di, 3 * 320 + 3
-    mov al, 3          ; Cyan (will be set in palette)
-    stosb
-    
-    ; Draw login box (centered, better proportions)
-    mov cx, 40         ; X (more centered)
-    mov dx, 30         ; Y
-    mov bx, 240        ; Width (wider)
-    mov si, 140        ; Height
-    mov al, 2          ; Gray color
+    mov cx, 40
+    mov dx, 30
+    mov bx, 240
+    mov si, 140
+    mov al, 2
     call draw_rect
     
-    ; Draw username input box
     mov cx, 55
     mov dx, 80
     mov bx, 210
     mov si, 18
-    mov al, 3          ; Light gray
+    mov al, 3
     call draw_rect
     
-    ; Draw password input box
     mov cx, 55
     mov dx, 115
     mov bx, 210
     mov si, 18
-    mov al, 3          ; Light gray
+    mov al, 3
     call draw_rect
     
-    ; Draw login button (centered)
     mov cx, 100
     mov dx, 142
     mov bx, 120
     mov si, 20
-    mov al, 4          ; Red
+    mov al, 4
     call draw_rect
     
-    ; DEBUG: White pixel at (4,4) - all rects drawn
-    push es
-    mov ax, 0xA000
-    mov es, ax
-    mov di, 4 * 320 + 4
-    mov al, 7          ; White
-    stosb
-    pop es
+    ; Load HZK12 from disk
+    call load_hzk12
     
-    ; Draw title "Nova OS" at top center
-    ; DEBUG: Draw red pixel to confirm we reach here
-    push es
-    mov ax, 0xA000
-    mov es, ax
-    mov di, 5 * 320 + 5
-    mov al, 4          ; Red debug pixel
-    stosb
-    pop es
+    ; Draw title using HZK12
+    mov si, title_str
+    mov bp, 80
+    mov dx, 8
+    call draw_string_hz
     
-    mov si, title_msg - start
-    mov bp, 110        ; X position (centered for 240px box)
-    mov dx, 10         ; Y position
-    call draw_string_8x8
+    ; Draw "Welcome" using HZK12
+    mov si, welcome_str
+    mov bp, 90
+    mov dx, 28
+    call draw_string_hz
     
-    ; Draw "Welcome" below title
-    mov si, welcome_msg - start
-    mov bp, 115        ; X position
-    mov dx, 55         ; Y position
-    call draw_string_8x8
+    ; Draw "Username:" using HZK12
+    mov si, username_str
+    mov bp, 55
+    mov dx, 62
+    call draw_string_hz
     
-    ; Draw "Username:" label
-    mov si, username_msg - start
-    mov bp, 55         ; X position (aligned with input box)
-    mov dx, 65         ; Y position (above input box)
-    call draw_string_8x8
+    ; Draw "Password:" using HZK12
+    mov si, password_str
+    mov bp, 55
+    mov dx, 97
+    call draw_string_hz
     
-    ; Draw "Password:" label
-    mov si, password_msg - start
-    mov bp, 55         ; X position
-    mov dx, 100        ; Y position (above password box)
-    call draw_string_8x8
+    ; Draw "Login" using HZK12
+    mov si, login_str
+    mov bp, 120
+    mov dx, 144
+    call draw_string_hz
     
-    ; Draw "Login" button text
-    mov si, login_msg - start
-    mov bp, 125        ; X position (centered on 120px button)
-    mov dx, 148        ; Y position (centered on button)
-    call draw_string_8x8
-    
-    ; Initialize mouse
     call init_mouse
     
-    ; Store initial mouse position for clearing
     mov ax, [mouse_x]
     mov [mouse_prev_x], ax
     mov ax, [mouse_y]
     mov [mouse_prev_y], ax
     
-    ; Main loop - handle mouse
 main_loop:
-    ; Save old position
     mov ax, [mouse_x]
     mov [mouse_prev_x], ax
     mov ax, [mouse_y]
     mov [mouse_prev_y], ax
     
-    ; Read new mouse position
     call read_mouse
     
-    ; Check if mouse moved
     mov ax, [mouse_x]
     mov bx, [mouse_prev_x]
     cmp ax, bx
@@ -153,32 +111,53 @@ main_loop:
     je main_loop
     
 mouse_moved:
-    ; Draw cursor at new position
     call draw_mouse_cursor
     
-    ; Small delay
     mov cx, 500
 delay_loop:
     loop delay_loop
     
     jmp main_loop
-    
+
 halt_s2:
     hlt
     jmp halt_s2
 
+; Load HZK12 from disk to memory at 0x1000:0x0000
+load_hzk12:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push es
+    
+    ; Use LBA read (int 0x13 ah=0x42)
+    mov ah, 0x42
+    mov dl, 0x80         ; First hard disk
+    mov si, hzk_dap - start
+    int 0x13
+    jc hzk_load_error
+    
+    pop es
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
 hzk_load_error:
-    ; Show error - red screen
     mov ax, 0xA000
     mov es, ax
     xor di, di
     mov cx, 64000
-    mov al, 40
+    mov al, 4
     rep stosb
     hlt
     jmp halt_s2
-
-load_width: dw 0
 
 init_palette:
     push ax
@@ -186,19 +165,18 @@ init_palette:
     push cx
     push dx
     
-    ; Start writing from color index 0
     mov dx, 0x03C8
     mov al, 0
     out dx, al
     inc dx
     
-    ; Color 0: Black (background)
+    ; Color 0: Black
     xor al, al
     out dx, al
     out dx, al
     out dx, al
     
-    ; Color 1: Dark Blue (main background)
+    ; Color 1: Dark Blue
     mov al, 0
     out dx, al
     mov al, 0
@@ -206,7 +184,7 @@ init_palette:
     mov al, 42
     out dx, al
     
-    ; Color 2: Gray (login box)
+    ; Color 2: Gray
     mov al, 32
     out dx, al
     mov al, 32
@@ -214,7 +192,7 @@ init_palette:
     mov al, 32
     out dx, al
     
-    ; Color 3: Light Gray (input boxes)
+    ; Color 3: Light Gray
     mov al, 42
     out dx, al
     mov al, 42
@@ -230,7 +208,7 @@ init_palette:
     xor al, al
     out dx, al
     
-    ; Color 5: Dark Gray (progress bar bg)
+    ; Color 5: Dark Gray
     mov al, 21
     out dx, al
     mov al, 21
@@ -238,7 +216,7 @@ init_palette:
     mov al, 21
     out dx, al
     
-    ; Color 6: Green (progress bar fill)
+    ; Color 6: Green
     xor al, al
     out dx, al
     mov al, 63
@@ -246,7 +224,7 @@ init_palette:
     xor al, al
     out dx, al
     
-    ; Color 7: White (text)
+    ; Color 7: White
     mov al, 63
     out dx, al
     mov al, 63
@@ -257,30 +235,6 @@ init_palette:
     pop dx
     pop cx
     pop bx
-    pop ax
-    ret
-
-; Draw 8 pixels from AL at VRAM position DI
-; Input: AL = byte pattern, DI = VRAM offset, ES = 0xA000
-draw_byte:
-    push ax
-    push cx
-    push dx
-    mov cx, 8
-    mov dl, al
-draw_byte_loop:
-    test dl, 0x80
-    jz draw_byte_skip
-    mov al, 7          ; White
-    stosb              ; DI auto-increments
-    jmp draw_byte_next
-draw_byte_skip:
-    inc di             ; Skip this pixel
-draw_byte_next:
-    shl dl, 1
-    loop draw_byte_loop
-    pop dx
-    pop cx
     pop ax
     ret
 
@@ -323,345 +277,10 @@ draw_rect_col:
     pop bp
     ret
 
-; Draw rounded rectangle
-; Input: CX=X, DX=Y, BX=Width, SI=Height, AL=Color
-draw_rounded_rect:
-    push bp
-    push si
-    push di
-    push es
-    push ax
-    push bx
-    push cx
-    push dx
-    
-    mov [rect_x], cx
-    mov [rect_y], dx
-    mov [rect_width], bx
-    mov [rect_height], si
-    mov [rect_color], al
-    
-    mov ax, 0xA000
-    mov es, ax
-    
-    ; Draw main rectangle body (excluding corners)
-    ; Top edge (excluding corners)
-    mov dx, [rect_y]
-    inc dx             ; Skip top corner row
-    mov cx, [rect_x]
-    add cx, 4          ; Skip left corner
-    mov bx, [rect_width]
-    sub bx, 8          ; Width - 8 (4 left + 4 right corners)
-    call draw_hline
-    
-    ; Bottom edge (excluding corners)
-    mov dx, [rect_y]
-    add dx, [rect_height]
-    sub dx, 2          ; Skip bottom corner row
-    mov cx, [rect_x]
-    add cx, 4
-    mov bx, [rect_width]
-    sub bx, 8
-    call draw_hline
-    
-    ; Left edge (excluding corners)
-    mov dx, [rect_y]
-    add dx, 4
-    mov cx, [rect_x]
-    add cx, 4          ; Skip left corner column
-    mov bx, [rect_height]
-    sub bx, 8
-    call draw_vline
-    
-    ; Right edge (excluding corners)
-    mov dx, [rect_y]
-    add dx, 4
-    mov cx, [rect_x]
-    add cx, [rect_width]
-    sub cx, 5          ; Skip right corner column
-    mov bx, [rect_height]
-    sub bx, 8
-    call draw_vline
-    
-    ; Draw corners (4 pixels each)
-    ; Top-left corner
-    mov dx, [rect_y]
-    mov cx, [rect_x]
-    add cx, 2
-    mov bx, 4
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    add cx, 1
-    mov bx, 6
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    mov bx, 8
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    mov bx, 8
-    call draw_hline
-    
-    ; Top-right corner
-    mov dx, [rect_y]
-    mov cx, [rect_x]
-    add cx, [rect_width]
-    sub cx, 6
-    mov bx, 4
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    add cx, [rect_width]
-    sub cx, 7
-    mov bx, 6
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    add cx, [rect_width]
-    sub cx, 8
-    mov bx, 8
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    add cx, [rect_width]
-    sub cx, 8
-    mov bx, 8
-    call draw_hline
-    
-    ; Bottom-left corner
-    mov dx, [rect_y]
-    add dx, [rect_height]
-    sub dx, 4
-    mov cx, [rect_x]
-    mov bx, 8
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    mov bx, 8
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    add cx, 1
-    mov bx, 6
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    add cx, 2
-    mov bx, 4
-    call draw_hline
-    
-    ; Bottom-right corner
-    mov dx, [rect_y]
-    add dx, [rect_height]
-    sub dx, 4
-    mov cx, [rect_x]
-    add cx, [rect_width]
-    sub cx, 8
-    mov bx, 8
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    add cx, [rect_width]
-    sub cx, 8
-    mov bx, 8
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    add cx, [rect_width]
-    sub cx, 7
-    mov bx, 6
-    call draw_hline
-    inc dx
-    mov cx, [rect_x]
-    add cx, [rect_width]
-    sub cx, 6
-    mov bx, 4
-    call draw_hline
-    
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    pop es
-    pop di
-    pop si
-    pop bp
-    ret
-
-; Draw horizontal line
-; Input: CX=X, DX=Y, BX=Width
-draw_hline:
-    push ax
-    push bx
-    push cx
-    push dx
-    push di
-    push es
-    
-    mov ax, 0xA000
-    mov es, ax
-    mov ax, 320
-    mul dx
-    add ax, cx
-    mov di, ax
-    mov al, [rect_color]
-    
-draw_hline_loop:
-    stosb
-    dec bx
-    jnz draw_hline_loop
-    
-    pop es
-    pop di
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-
-; Draw vertical line
-; Input: CX=X, DX=Y, BX=Height
-draw_vline:
-    push ax
-    push bx
-    push cx
-    push dx
-    push di
-    push es
-    
-    mov ax, 0xA000
-    mov es, ax
-    
-draw_vline_loop:
-    mov ax, 320
-    mul dx
-    add ax, cx
-    mov di, ax
-    mov al, [rect_color]
-    stosb
-    inc dx
-    dec bx
-    jnz draw_vline_loop
-    
-    pop es
-    pop di
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-
-draw_string_8x8:
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-    push bp
-    push es
-    mov [str_x], bp
-    mov [str_y], dx
-    
-draw_str_loop:
-    lodsb
-    test al, al
-    jz draw_str_done
-    push ax
-    push si
-    mov bp, [str_x]
-    mov dx, [str_y]
-    call draw_char_8x8
-    pop si
-    pop ax
-    add word [str_x], 8
-    jmp draw_str_loop
-draw_str_done:
-    pop es
-    pop bp
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-
-draw_char_8x8:
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-    push bp
-    push es
-    
-    ; Save position
-    mov [char_x], bp
-    mov [char_y], dx
-    
-    ; Calculate font data offset: char_code * 8
-    mov bl, al
-    mov bh, 0
-    shl bx, 3            ; BX = char_code * 8
-    
-    ; Access font data using DS (DS=0x07E0, same as code segment)
-    mov si, font_8x8
-    add si, bx           ; SI = font_8x8 offset + char offset
-    
-    ; Set ES to VRAM
-    mov ax, 0xA000
-    mov es, ax
-    mov cx, 8
-    mov [char_row], cx
-    xor bx, bx           ; Row counter
-    
-draw_char_row:
-    lodsb                ; AL = [DS:SI], SI++
-    mov dx, [char_y]
-    add dx, bx
-    mov bp, dx
-    mov ax, 320
-    mul bp
-    mov di, ax
-    add di, [char_x]
-    mov cx, 8
-    mov dl, al
-    
-draw_char_pixel:
-    test dl, 0x80
-    jz skip_pixel
-    mov al, 7            ; White
-    mov [es:di], al      ; Write to VRAM
-    inc di
-    jmp next_pixel
-skip_pixel:
-    inc di
-next_pixel:
-    shl dl, 1
-    loop draw_char_pixel
-    inc bx
-    dec word [char_row]
-    jnz draw_char_row
-    
-    pop es
-    pop bp
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-
-; Draw 16x16 Chinese character from HZK16
+; Draw HZK12 character
 ; Input: AL = high byte (区号), AH = low byte (位号)
-;        BP = X position
-;        DX = Y position
-draw_char_16x16:
+;        BP = X position, DX = Y position
+draw_char_hz:
     push bx
     push cx
     push dx
@@ -671,90 +290,86 @@ draw_char_16x16:
     push es
     push ds
     
-    ; Save X and Y
-    mov [char16_x], bp
-    mov [char16_y], dx
+    mov [char_hz_x], bp
+    mov [char_hz_y], dx
     
-    ; Calculate HZK16 offset from GB2312 code (AL=high/区号, AH=low/位号)
-    ; Save original values
-    mov bl, al           ; BL = 区号
-    mov bh, ah           ; BH = 位号
+    ; Calculate HZK12 offset
+    mov bl, al
+    mov bh, ah
+    sub bl, 0xA1
+    sub bh, 0xA1
     
-    sub bl, 0xA1         ; 区号 - 0xA1
-    sub bh, 0xA1         ; 位号 - 0xA1
-    
-    mov al, bl           ; AL = 区号
+    mov al, bl
     mov ah, 0
     mov cx, 94
-    mul cx               ; AX = 区号 * 94
-    mov bl, bh           ; BL = 位号
+    mul cx
+    mov bl, bh
     mov bh, 0
-    add ax, bx           ; AX = 区号 * 94 + 位号
+    add ax, bx
     
-    shl ax, 5            ; AX = offset in HZK16 (each char is 32 bytes)
+    ; HZK12: each char is 24 bytes (12 rows x 2 bytes)
+    mov bx, 24
+    mul bx
     
-    ; Set DS to HZK16 segment
+    ; DS = 0x1000 (HZK12 segment)
     mov dx, 0x1000
     mov ds, dx
     mov si, ax
     
-    ; Set ES to VRAM
     mov ax, 0xA000
     mov es, ax
     
-    ; Draw 16 rows
-    mov cx, 16
-    mov [char16_row], cx
-    xor bx, bx           ; Row counter
-draw_char16_row:
-    ; Read 2 bytes from HZK16
+    mov cx, 12
+    mov [char_hz_row], cx
+    xor bx, bx
+    
+draw_hz_row:
     mov al, [si]
     mov ah, [si+1]
     add si, 2
     
-    ; Calculate VRAM offset for this row
-    mov dx, [char16_y]
+    mov dx, [char_hz_y]
     add dx, bx
     
     mov bp, dx
-    mov ax, 320
-    mul bp               ; DX:AX = 320 * Y, but we only need AX for 320x200 screen
-    mov di, ax           ; DI = low 16 bits of result (offset in VRAM)
-    add di, [char16_x]   ; Add X offset
+    mov dx, 320
+    mul dx
+    mov di, ax
+    add di, [char_hz_x]
     
     ; Draw first byte (8 pixels)
     mov cx, 8
     mov dl, al
-draw_char16_pixel1:
+draw_hz_p1:
     test dl, 0x80
-    jz skip_pixel1
-    mov al, 7            ; White
+    jz skip_hz_p1
+    mov al, 7
     stosb
-    jmp next_pixel1
-skip_pixel1:
+    jmp next_hz_p1
+skip_hz_p1:
     inc di
-next_pixel1:
+next_hz_p1:
     shl dl, 1
-    loop draw_char16_pixel1
+    loop draw_hz_p1
     
-    ; Draw second byte (8 pixels)
-    mov cx, 8
+    ; Draw second byte (4 pixels for 12-width)
+    mov cx, 4
     mov dl, ah
-draw_char16_pixel2:
+draw_hz_p2:
     test dl, 0x80
-    jz skip_pixel2
-    mov al, 7            ; White
+    jz skip_hz_p2
+    mov al, 7
     stosb
-    jmp next_pixel2
-skip_pixel2:
+    jmp next_hz_p2
+skip_hz_p2:
     inc di
-next_pixel2:
+next_hz_p2:
     shl dl, 1
-    loop draw_char16_pixel2
+    loop draw_hz_p2
     
     inc bx
-    dec word [char16_row]
-    jnz draw_char16_row
+    dec word [char_hz_row]
+    jnz draw_hz_row
     
     pop ds
     pop es
@@ -766,11 +381,10 @@ next_pixel2:
     pop bx
     ret
 
-; Draw 16x16 Chinese string
-; Input: SI = pointer to GB2312 encoded string
-;        BP = X position
-;        DX = Y position
-draw_string_16x16:
+; Draw HZK12 string
+; Input: SI = pointer to GB2312 string
+;        BP = X, DX = Y
+draw_string_hz:
     push ax
     push bx
     push cx
@@ -779,23 +393,22 @@ draw_string_16x16:
     push bp
     push es
     push ds
-    mov [str16_x], bp
-    mov [str16_y], dx
-draw_str16_loop:
+    mov [str_hz_x], bp
+    mov [str_hz_y], dx
+draw_str_hz_loop:
     lodsb
     test al, al
-    jz draw_str16_done
-    mov ah, [si]         ; Get second byte
-    inc si               ; Advance past second byte
-    ; AL = high byte, AH = low byte - ready for draw_char_16x16
-    push si              ; Save string pointer
-    mov bp, [str16_x]
-    mov dx, [str16_y]
-    call draw_char_16x16
-    pop si               ; Restore string pointer
-    add word [str16_x], 16
-    jmp draw_str16_loop
-draw_str16_done:
+    jz draw_str_hz_done
+    mov ah, [si]
+    inc si
+    push si
+    mov bp, [str_hz_x]
+    mov dx, [str_hz_y]
+    call draw_char_hz
+    pop si
+    add word [str_hz_x], 12
+    jmp draw_str_hz_loop
+draw_str_hz_done:
     pop ds
     pop es
     pop bp
@@ -806,30 +419,26 @@ draw_str16_done:
     pop ax
     ret
 
-; Initialize mouse (INT 33h)
 init_mouse:
     push ax
     push bx
     push cx
     push dx
     
-    ; Reset mouse
     mov ax, 0
     int 0x33
     
-    ; Show mouse cursor
     mov ax, 1
     int 0x33
     
-    ; Set mouse range (320x200)
-    mov ax, 7          ; Set horizontal range
-    mov cx, 0          ; Min X
-    mov dx, 319        ; Max X
+    mov ax, 7
+    mov cx, 0
+    mov dx, 319
     int 0x33
     
-    mov ax, 8          ; Set vertical range
-    mov cx, 0          ; Min Y
-    mov dx, 199        ; Max Y
+    mov ax, 8
+    mov cx, 0
+    mov dx, 199
     int 0x33
     
     pop dx
@@ -838,17 +447,15 @@ init_mouse:
     pop ax
     ret
 
-; Read mouse position and buttons
 read_mouse:
     push ax
     push bx
     push cx
     push dx
     
-    mov ax, 3          ; Get mouse position and button status
+    mov ax, 3
     int 0x33
     
-    ; Save position
     mov [mouse_x], cx
     mov [mouse_y], dx
     mov [mouse_buttons], bl
@@ -859,7 +466,6 @@ read_mouse:
     pop ax
     ret
 
-; Draw mouse cursor (simple crosshair)
 draw_mouse_cursor:
     push ax
     push bx
@@ -875,8 +481,6 @@ draw_mouse_cursor:
     mov si, [mouse_y]
     mov di, [mouse_x]
     
-    ; Draw crosshair cursor (white)
-    ; Horizontal line: 5 pixels centered
     push si
     push di
     sub di, 2
@@ -892,7 +496,6 @@ draw_mouse_cursor:
     pop di
     pop si
     
-    ; Vertical line: 5 pixels centered
     push si
     push di
     sub si, 2
@@ -917,7 +520,6 @@ draw_mouse_cursor:
     pop ax
     ret
 
-; Draw pixel at SI (row), DI (col) - uses ES=0xA000
 draw_cursor_pixel_at:
     push ax
     push bx
@@ -927,19 +529,16 @@ draw_cursor_pixel_at:
     mov dx, si
     mov cx, di
     
-    ; Check bounds
     cmp dx, 199
     ja draw_cursor_pixel_at_done
     cmp cx, 319
     ja draw_cursor_pixel_at_done
     
-    ; Calculate VRAM offset
     mov ax, 320
     mul dx
     add ax, cx
     mov bx, ax
     
-    ; Draw white pixel
     mov di, bx
     mov al, 7
     stosb
@@ -957,18 +556,13 @@ rect_y: dw 0
 rect_width: dw 0
 rect_height: dw 0
 rect_color: db 0
-str_x: dw 0
-str_y: dw 0
-char_x: dw 0
-char_y: dw 0
-char_row: dw 0
-char16_x: dw 0
-char16_y: dw 0
-char16_row: dw 0
-str16_x: dw 0
-str16_y: dw 0
 
-; Mouse variables
+char_hz_x: dw 0
+char_hz_y: dw 0
+char_hz_row: dw 0
+str_hz_x: dw 0
+str_hz_y: dw 0
+
 mouse_x: dw 160
 mouse_y: dw 100
 mouse_buttons: db 0
@@ -976,182 +570,28 @@ mouse_prev_x: dw 0
 mouse_prev_y: dw 0
 mouse_hidden: db 0
 
-; CHS reading variables
-sectors_left: dw 0
-current_cyl: db 0
-current_head: db 0
-current_sect: db 0
-buf_seg: dw 0
-buf_off: dw 0
-to_read: db 0
-
-; DAP structure for HZK16 loading
+; HZK12 DAP (copy from boot sector)
 hzk_dap:
-    db 0x10        ; DAP size (16 bytes)
-    db 0           ; Reserved
-    dw 523         ; Sector count
-    dw 0x0000      ; Buffer offset
-    dw 0x1000      ; Buffer segment
-    dd 115         ; LBA low
-    dd 0           ; LBA high
+    db 0x10
+    db 0
+    dw 384
+    dw 0x0000
+    dw 0x1000
+    dd 65
+    dd 0
 
-; ASCII strings
-title_msg:    db 'Nova OS', 0
-loading_msg:  db 'Loading...', 0
-test_msg:     db 'TEST', 0
+; Boot drive (at offset 0x200, set by boot sector)
+boot_drive: db 0
 
-; Login screen strings
-welcome_msg:  db 'Welcome', 0
-username_msg: db 'Username:', 0
-password_msg: db 'Password:', 0
-login_msg:    db 'Login', 0
+; GB2312 encoded strings
+; "Nova OS" - N(0x4E6F), o(0x6F76), v(0x7661), a(0x6120), 空格, O(0x4F53), S(0x5300)
+; Actually let's use ASCII for English text with HZK12
+; HZK12 supports ASCII too (区号0xA1-0xA3 for ASCII)
 
-; 8x8 font data - complete table for ASCII 0-127
-; Each character is 8 bytes
-font_8x8:
-    ; ASCII 0-31: empty
-    times 32*8 db 0
-    
-    ; ASCII 32: space
-    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    
-    ; ASCII 33-57: empty (except we'll add colon at 58)
-    times 25*8 db 0
-    
-    ; ASCII 58: colon ':'
-    db 0x00,0x18,0x18,0x00,0x18,0x18,0x00,0x00
-    
-    ; ASCII 59-63: empty
-    times 5*8 db 0
-    
-    ; ASCII 64-95
-    ; '@' (64)
-    db 0x3C,0x42,0x99,0xA5,0xA5,0x99,0x42,0x3C
-    ; 'A' (65)
-    db 0x18,0x3C,0x66,0x66,0x7E,0x66,0x66,0x00
-    ; 'B' (66)
-    db 0x7C,0x66,0x66,0x7C,0x66,0x66,0x7C,0x00
-    ; 'C' (67)
-    db 0x3C,0x66,0x60,0x60,0x60,0x66,0x3C,0x00
-    ; 'D' (68)
-    db 0x78,0x6C,0x66,0x66,0x66,0x6C,0x78,0x00
-    ; 'E' (69)
-    db 0x7E,0x60,0x60,0x7C,0x60,0x60,0x7E,0x00
-    ; 'F' (70)
-    db 0x7E,0x60,0x60,0x7C,0x60,0x60,0x60,0x00
-    ; 'G' (71)
-    db 0x3C,0x66,0x60,0x6E,0x66,0x66,0x3C,0x00
-    ; 'H' (72)
-    db 0x66,0x66,0x66,0x7E,0x66,0x66,0x66,0x00
-    ; 'I' (73)
-    db 0x3C,0x18,0x18,0x18,0x18,0x18,0x3C,0x00
-    ; 'J' (74)
-    db 0x1E,0x0C,0x0C,0x0C,0x0C,0x6C,0x38,0x00
-    ; 'K' (75)
-    db 0x66,0x6C,0x78,0x70,0x78,0x6C,0x66,0x00
-    ; 'L' (76)
-    db 0x60,0x60,0x60,0x60,0x60,0x60,0x7E,0x00
-    ; 'M' (77)
-    db 0x63,0x77,0x7F,0x6B,0x63,0x63,0x63,0x00
-    ; 'N' (78)
-    db 0x66,0x76,0x7E,0x7E,0x6E,0x66,0x66,0x00
-    ; 'O' (79)
-    db 0x3C,0x66,0x66,0x66,0x66,0x66,0x3C,0x00
-    ; 'P' (80)
-    db 0x7C,0x66,0x66,0x7C,0x60,0x60,0x60,0x00
-    ; 'Q' (81)
-    db 0x3C,0x66,0x66,0x66,0x6A,0x6C,0x36,0x00
-    ; 'R' (82)
-    db 0x7C,0x66,0x66,0x7C,0x78,0x6C,0x66,0x00
-    ; 'S' (83)
-    db 0x3C,0x66,0x60,0x3C,0x06,0x66,0x3C,0x00
-    ; 'T' (84)
-    db 0x7E,0x18,0x18,0x18,0x18,0x18,0x18,0x00
-    ; 'U' (85)
-    db 0x66,0x66,0x66,0x66,0x66,0x66,0x3C,0x00
-    ; 'V' (86)
-    db 0x66,0x66,0x66,0x66,0x66,0x3C,0x18,0x00
-    ; 'W' (87)
-    db 0x63,0x63,0x63,0x6B,0x7F,0x77,0x63,0x00
-    ; 'X' (88)
-    db 0x66,0x66,0x3C,0x18,0x3C,0x66,0x66,0x00
-    ; 'Y' (89)
-    db 0x66,0x66,0x66,0x3C,0x18,0x18,0x18,0x00
-    ; 'Z' (90)
-    db 0x7E,0x06,0x0C,0x18,0x30,0x60,0x7E,0x00
-    ; '[' (91)
-    db 0x3C,0x30,0x30,0x30,0x30,0x30,0x3C,0x00
-    ; '\' (92)
-    db 0x00,0x60,0x30,0x18,0x0C,0x06,0x00,0x00
-    ; ']' (93)
-    db 0x3C,0x0C,0x0C,0x0C,0x0C,0x0C,0x3C,0x00
-    ; '^' (94)
-    db 0x18,0x3C,0x66,0x00,0x00,0x00,0x00,0x00
-    ; '_' (95)
-    db 0x00,0x00,0x00,0x00,0x00,0x00,0x7E,0x00
-    
-    ; ASCII 96-127
-    ; '`' (96)
-    db 0x30,0x18,0x00,0x00,0x00,0x00,0x00,0x00
-    ; 'a' (97)
-    db 0x00,0x00,0x3C,0x06,0x3E,0x66,0x3E,0x00
-    ; 'b' (98)
-    db 0x60,0x60,0x7C,0x66,0x66,0x66,0x7C,0x00
-    ; 'c' (99)
-    db 0x00,0x00,0x3C,0x60,0x60,0x60,0x3C,0x00
-    ; 'd' (100)
-    db 0x06,0x06,0x3E,0x66,0x66,0x66,0x3E,0x00
-    ; 'e' (101)
-    db 0x00,0x00,0x3C,0x66,0x7E,0x60,0x3C,0x00
-    ; 'f' (102)
-    db 0x1C,0x06,0x06,0x3E,0x06,0x06,0x06,0x00
-    ; 'g' (103)
-    db 0x00,0x00,0x3E,0x66,0x66,0x3E,0x06,0x3C
-    ; 'h' (104)
-    db 0x60,0x60,0x7C,0x66,0x66,0x66,0x66,0x00
-    ; 'i' (105)
-    db 0x18,0x00,0x18,0x18,0x18,0x18,0x3C,0x00
-    ; 'j' (106)
-    db 0x0C,0x00,0x0C,0x0C,0x0C,0x0C,0x6C,0x38
-    ; 'k' (107)
-    db 0x60,0x60,0x6C,0x78,0x78,0x6C,0x66,0x00
-    ; 'l' (108)
-    db 0x18,0x18,0x18,0x18,0x18,0x18,0x3C,0x00
-    ; 'm' (109)
-    db 0x00,0x00,0x66,0x7F,0x7F,0x6B,0x63,0x00
-    ; 'n' (110)
-    db 0x00,0x00,0x7C,0x66,0x66,0x66,0x66,0x00
-    ; 'o' (111)
-    db 0x00,0x00,0x3C,0x66,0x66,0x66,0x3C,0x00
-    ; 'p' (112)
-    db 0x00,0x00,0x7C,0x66,0x66,0x7C,0x60,0x60
-    ; 'q' (113)
-    db 0x00,0x00,0x3E,0x66,0x66,0x3E,0x06,0x06
-    ; 'r' (114)
-    db 0x00,0x00,0x7C,0x66,0x60,0x60,0x60,0x00
-    ; 's' (115)
-    db 0x00,0x00,0x3E,0x60,0x3C,0x06,0x7C,0x00
-    ; 't' (116)
-    db 0x06,0x06,0x3E,0x06,0x06,0x06,0x1C,0x00
-    ; 'u' (117)
-    db 0x00,0x00,0x66,0x66,0x66,0x66,0x3E,0x00
-    ; 'v' (118)
-    db 0x00,0x00,0x66,0x66,0x66,0x3C,0x18,0x00
-    ; 'w' (119)
-    db 0x00,0x00,0x63,0x6B,0x7F,0x7F,0x36,0x00
-    ; 'x' (120)
-    db 0x00,0x00,0x66,0x3C,0x18,0x3C,0x66,0x00
-    ; 'y' (121)
-    db 0x00,0x00,0x66,0x66,0x66,0x3E,0x06,0x3C
-    ; 'z' (122)
-    db 0x00,0x00,0x7E,0x0C,0x18,0x30,0x7E,0x00
-    ; '{' (123)
-    db 0x1C,0x06,0x06,0x06,0x06,0x06,0x1C,0x00
-    ; '|' (124)
-    db 0x18,0x18,0x18,0x00,0x18,0x18,0x18,0x00
-    ; '}' (125)
-    db 0xE0,0x60,0x60,0x60,0x60,0x60,0xE0,0x00
-    ; '~' (126)
-    db 0x76,0xDC,0x00,0x00,0x00,0x00,0x00,0x00
-    ; DEL (127)
-    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+; For simplicity, let's use Chinese characters
+; "欢迎" = 欢迎 (Welcome)
+title_str:    db 0xBB,0xB6, 0xD3,0xAD, 0x00    ; 欢迎
+welcome_str:  db 0xBB,0xB6, 0xD3,0xAD, 0xCA,0xB9, 0xD3,0xC3, 0x00  ; 欢迎使用
+username_str: db 0xD3,0xC3, 0xBB,0xA7, 0xC3,0xFB, 0x3A, 0x00  ; 用户名:
+password_str: db 0xC3,0xDC, 0xC2,0xEB, 0x3A, 0x00  ; 密码:
+login_str:    db 0xB5,0xC7, 0xC2,0xBC, 0x00  ; 登录
