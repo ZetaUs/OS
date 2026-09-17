@@ -14,31 +14,31 @@ start:
     mov ax, 0x0012
     int 0x10
     
-    ; Fill screen with blue background using BIOS scroll
-    mov ax, 0x0600
-    mov bh, 0x01      ; Blue attribute
-    mov cx, 0x0000    ; Upper left: row 0, col 0
-    mov dx, 0x184F    ; Lower right: row 24, col 79
-    int 0x10
-    
-    ; Also fill with pixel method for graphics mode
-    ; Set write mode for all planes
-    mov dx, 0x03CE
-    mov al, 0x05      ; Mode register
-    mov ah, 0x00      ; Write mode 0
-    out dx, ax
-    
-    mov dx, 0x03C4
-    mov al, 0x02      ; Map mask
-    mov ah, 0x0F      ; All 4 planes
-    out dx, ax
-    
-    ; Fill VRAM with blue (color 1 = 0001b, so plane 0 = 1, others = 0)
+    ; Fill screen with blue background
+    ; In planar mode, color 1 (blue) = plane 0 only
     mov ax, 0xA000
     mov es, ax
+    
+    ; Write 0xFF to plane 0 (blue bit)
+    mov dx, 0x03C4
+    mov al, 0x02      ; Map mask register
+    mov ah, 0x01      ; Plane 0 only
+    out dx, ax
+    
     xor di, di
-    mov cx, 38400     ; 640*480/8 bytes per plane
-    mov al, 0x01      ; Plane 0 = 1 (blue bit)
+    mov cx, 38400     ; 640*480/8 bytes
+    mov al, 0xFF      ; All pixels on in this plane
+    rep stosb
+    
+    ; Write 0x00 to planes 1, 2, 3 (no red, green, intensity)
+    mov dx, 0x03C4
+    mov al, 0x02
+    mov ah, 0x0E      ; Planes 1, 2, 3
+    out dx, ax
+    
+    xor di, di
+    mov cx, 38400
+    xor al, al        ; 0x00
     rep stosb
     
     ; Draw login box (gray)
