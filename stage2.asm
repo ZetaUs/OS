@@ -14,25 +14,31 @@ start:
     mov ax, 0x0012
     int 0x10
     
-    ; Draw background (blue) using direct VRAM write
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 38400      ; 640*480/8 = 38400 bytes (planar mode)
-    mov al, 0x01       ; Blue in plane 0
-    rep stosb
+    ; Fill screen with blue background using BIOS scroll
+    mov ax, 0x0600
+    mov bh, 0x01      ; Blue attribute
+    mov cx, 0x0000    ; Upper left: row 0, col 0
+    mov dx, 0x184F    ; Lower right: row 24, col 79
+    int 0x10
     
-    ; Set all planes to blue
-    mov dx, 0x03C4
-    mov al, 0x02       ; Map mask register
-    mov ah, 0x0F       ; All 4 planes
+    ; Also fill with pixel method for graphics mode
+    ; Set write mode for all planes
+    mov dx, 0x03CE
+    mov al, 0x05      ; Mode register
+    mov ah, 0x00      ; Write mode 0
     out dx, ax
     
+    mov dx, 0x03C4
+    mov al, 0x02      ; Map mask
+    mov ah, 0x0F      ; All 4 planes
+    out dx, ax
+    
+    ; Fill VRAM with blue (color 1 = 0001b, so plane 0 = 1, others = 0)
     mov ax, 0xA000
     mov es, ax
     xor di, di
-    mov cx, 38400
-    mov al, 0x01
+    mov cx, 38400     ; 640*480/8 bytes per plane
+    mov al, 0x01      ; Plane 0 = 1 (blue bit)
     rep stosb
     
     ; Draw login box (gray)
@@ -180,7 +186,7 @@ draw_rect_fast_col:
     pop bp
     ret
 
-; Draw HZK12 character using 10x10 rectangles for visibility
+; Draw HZK12 character using 1x1 pixels
 ; Input: SI = pointer to HZK12 data (12 words, 24 bytes)
 ;        [font_x], [font_y] = starting position (will NOT be modified)
 draw_hz_char:
@@ -200,7 +206,7 @@ hzk_draw_row:
     mov ax, [si]
     add si, 2
     mov cx, 12        ; CX = column counter (12 columns for HZK12)
-    mov dx, [font_x]  ; DX = current X position
+    mov di, [font_x]  ; DI = current X position
 
 hzk_draw_col:
     test ax, 0x8000
@@ -210,16 +216,20 @@ hzk_draw_col:
     push cx
     push si
     push bp
-    push dx
+    push di
     
-    mov di, dx
     mov bx, [font_y]
-    add bx, bp        ; Y = font_y + row
-    mov cx, 10        ; Width = 10
-    mov dx, 10        ; Height = 10
-    call draw_rect_12h
+    add bx, bp        ; BX = Y = font_y + row
     
-    pop dx
+    ; Draw 1x1 pixel at (DI, BX)
+    mov cx, di
+    mov dx, bx
+    mov ah, 0x0c
+    mov al, 0x0F      ; White
+    xor bh, bh
+    int 0x10
+    
+    pop di
     pop bp
     pop si
     pop cx
@@ -227,7 +237,7 @@ hzk_draw_col:
 
 hzk_draw_skip:
     shl ax, 1
-    add dx, 12        ; X += 12 (spacing between columns)
+    inc di            ; X += 1 (next column)
     loop hzk_draw_col
     
     inc bp            ; Next row
@@ -506,7 +516,7 @@ title_hz:
     dw 0x0FF0
     
     ; ' ' - space
-    times 16 dw 0x0000
+    times 12 dw 0x0000
     
     ; 'O' - 12x12 bitmap
     dw 0x3FFC
