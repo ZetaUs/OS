@@ -57,8 +57,8 @@ dap:
     db 0x10          ; [0] Packet size = 16 bytes
     db 0x00          ; [1] Reserved
     dw 8             ; [2-3] Number of sectors to read = 8 (4KB)
-    dw 0x0000        ; [4-5] Buffer offset = 0x0000
-    dw 0x07E0        ; [6-7] Buffer segment = 0x07E0 (physical 0x7E00)
+    dw 0x7E00        ; [4-5] Buffer offset = 0x7E00
+    dw 0x0000        ; [6-7] Buffer segment = 0x0000 (physical 0x7E00)
     dd 1             ; [8-11] Starting LBA = 1
     dd 0             ; [12-15] LBA high = 0
 

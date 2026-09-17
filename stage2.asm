@@ -27,8 +27,20 @@ start:
     mov al, 1
     rep stosb
     
+    ; DEBUG: Yellow pixel at (2,2) - stage2 started
+    mov di, 2 * 320 + 2
+    mov al, 14         ; Yellow
+    stosb
+    
     ; Initialize palette
     call init_palette
+    
+    ; DEBUG: Cyan pixel at (3,3) - palette init done
+    mov ax, 0xA000
+    mov es, ax
+    mov di, 3 * 320 + 3
+    mov al, 3          ; Cyan (will be set in palette)
+    stosb
     
     ; Draw login box (centered, better proportions)
     mov cx, 40         ; X (more centered)
@@ -61,6 +73,15 @@ start:
     mov si, 20
     mov al, 4          ; Red
     call draw_rect
+    
+    ; DEBUG: White pixel at (4,4) - all rects drawn
+    push es
+    mov ax, 0xA000
+    mov es, ax
+    mov di, 4 * 320 + 4
+    mov al, 7          ; White
+    stosb
+    pop es
     
     ; Draw title "Nova OS" at top center
     ; DEBUG: Draw red pixel to confirm we reach here
