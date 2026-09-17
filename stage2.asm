@@ -297,9 +297,10 @@ draw_char_row:
     inc si
     mov dx, [char_y]
     add dx, bx
-    mov bp, dx
+    push dx           ; 保存Y坐标
     mov ax, 320
-    mul word [bp]     ; AX = 320 * Y坐标
+    mul dx            ; DX:AX = 320 * Y
+    pop dx            ; 恢复Y坐标（虽然不需要了）
     mov di, ax
     add di, [char_x]
     mov ch, 8
