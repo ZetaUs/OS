@@ -299,8 +299,10 @@ draw_hz_str_loop:
     push si
     call draw_hz_char
     pop si
-    add si, 24
-    add word [font_x], 24    ; 12 pixels width + 12 pixels spacing
+    
+    add si, 24        ; Each character is 24 bytes (12 words)
+    add word [font_x], 12  ; Move to next character position
+    
     jmp draw_hz_str_loop
 
 draw_hz_str_done:
@@ -314,166 +316,101 @@ draw_hz_str_done:
 
 ; Initialize mouse
 init_mouse:
-    push ax
-    push bx
-    push cx
-    push dx
+    mov ax, 0x0000
+    int 0x33
+    test ax, ax
+    jz mouse_not_present
     
-    mov ax, 0
+    ; Show mouse cursor
+    mov ax, 0x0001
     int 0x33
     
-    mov ax, 1
+    ; Set mouse position to center
+    mov ax, 0x0004
+    mov cx, 320
+    mov dx, 240
     int 0x33
     
-    mov ax, 7
-    mov cx, 0
-    mov dx, 639
-    int 0x33
-    
-    mov ax, 8
-    mov cx, 0
-    mov dx, 479
-    int 0x33
-    
-    pop dx
-    pop cx
-    pop bx
-    pop ax
+    mov word [mouse_x], 320
+    mov word [mouse_y], 240
+    ret
+
+mouse_not_present:
+    mov word [mouse_x], 320
+    mov word [mouse_y], 240
     ret
 
 ; Read mouse position
 read_mouse:
-    push ax
-    push bx
-    push cx
-    push dx
-    
-    mov ax, 3
+    mov ax, 0x0003
     int 0x33
-    
     mov [mouse_x], cx
     mov [mouse_y], dx
-    mov [mouse_buttons], bl
-    
-    pop dx
-    pop cx
-    pop bx
-    pop ax
     ret
 
-; Draw mouse cursor
+; Draw mouse cursor (simple arrow)
 draw_mouse_cursor:
     push ax
     push bx
     push cx
     push dx
-    push di
-    push si
-    
-    mov si, [mouse_y]
-    mov di, [mouse_x]
-    
-    ; Draw cross cursor (5x5)
     push si
     push di
-    sub di, 2
-    call draw_cursor_pixel
-    inc di
-    call draw_cursor_pixel
-    inc di
-    call draw_cursor_pixel
-    inc di
-    call draw_cursor_pixel
-    inc di
-    call draw_cursor_pixel
-    pop di
-    pop si
     
-    push si
-    push di
-    sub si, 2
-    call draw_cursor_pixel
-    inc si
-    call draw_cursor_pixel
-    inc si
-    call draw_cursor_pixel
-    inc si
-    call draw_cursor_pixel
-    inc si
-    call draw_cursor_pixel
-    pop di
-    pop si
+    mov cx, [mouse_x]
+    mov dx, [mouse_y]
     
-    pop si
+    ; Draw cursor as a small white rectangle
+    mov bx, 10
+    mov si, 10
+    mov al, 0x0F      ; White
+    call draw_rect_fast
+    
     pop di
+    pop si
     pop dx
     pop cx
     pop bx
     pop ax
     ret
 
-draw_cursor_pixel:
-    push ax
-    push bx
-    push cx
-    push dx
-    
-    mov dx, si
-    mov cx, di
-    
-    cmp dx, 479
-    ja draw_cursor_done
-    cmp cx, 639
-    ja draw_cursor_done
-    
-    mov ah, 0x0c
-    mov al, 15         ; White
-    xor bh, bh
-    int 0x10
-    
-draw_cursor_done:
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-
-; Variables
+; Data section
 rect_x: dw 0
 rect_y: dw 0
 rect_width: dw 0
 rect_height: dw 0
 rect_color: db 0
+
 font_x: dw 0
 font_y: dw 0
-char_row: dw 0
 
 mouse_x: dw 320
 mouse_y: dw 240
-mouse_buttons: db 0
 mouse_prev_x: dw 0
 mouse_prev_y: dw 0
 
-; HZK12 font data for "Nova OS"
-; Each character: 16 rows x 2 bytes = 32 bytes
+; HZK12 font data for ASCII characters
+; Each character: 12 rows x 2 bytes = 24 bytes
 ; Format: Each row is 16 bits, left 12 bits are visible
 
 title_hz:
-    ; 'N' - 12x12 bitmap
+    ; 'N'
+    dw 0x8001
+    dw 0xC003
     dw 0xE007
     dw 0xF00F
     dw 0xF81F
     dw 0xFC3F
     dw 0xFE7F
-    dw 0xFFFF
-    dw 0xFFFF
     dw 0xFF7F
-    dw 0xFE3F
-    dw 0xFC1F
-    dw 0xF80F
-    dw 0xF007
+    dw 0xFF3F
+    dw 0xFE1F
+    dw 0xFC0F
+    dw 0xF807
     
-    ; 'o' - 12x12 bitmap
+    ; 'o'
+    dw 0x0000
+    dw 0x0000
     dw 0x3FFC
     dw 0x7FFE
     dw 0xE007
@@ -481,13 +418,13 @@ title_hz:
     dw 0xC003
     dw 0xC003
     dw 0xC003
-    dw 0xC003
-    dw 0xC003
     dw 0xE007
     dw 0x7FFE
     dw 0x3FFC
     
-    ; 'v' - 12x12 bitmap
+    ; 'v'
+    dw 0x0000
+    dw 0x0000
     dw 0x8001
     dw 0x8001
     dw 0xC003
@@ -495,35 +432,33 @@ title_hz:
     dw 0x6006
     dw 0x6006
     dw 0x300C
-    dw 0x300C
-    dw 0x1818
     dw 0x1818
     dw 0x0FF0
-    dw 0x0FF0
+    dw 0x0000
     
-    ; 'a' - 12x12 bitmap
+    ; 'a'
+    dw 0x0000
+    dw 0x0000
     dw 0x0FF0
     dw 0x1FF8
     dw 0x300C
     dw 0x300C
     dw 0x3FFC
-    dw 0x3FFC
-    dw 0x300C
     dw 0x300C
     dw 0x300C
     dw 0x3FFC
     dw 0x1FF8
     dw 0x0FF0
     
-    ; ' ' - space
+    ; ' '
     times 12 dw 0x0000
     
-    ; 'O' - 12x12 bitmap
+    ; 'O'
+    dw 0x0000
+    dw 0x0000
     dw 0x3FFC
     dw 0x7FFE
     dw 0xE007
-    dw 0xC003
-    dw 0xC003
     dw 0xC003
     dw 0xC003
     dw 0xC003
@@ -532,7 +467,9 @@ title_hz:
     dw 0x7FFE
     dw 0x3FFC
     
-    ; 'S' - 12x12 bitmap
+    ; 'S'
+    dw 0x0000
+    dw 0x0000
     dw 0x3FFC
     dw 0x7FFE
     dw 0xC003
@@ -541,16 +478,14 @@ title_hz:
     dw 0x7FFE
     dw 0xE007
     dw 0xC003
-    dw 0xC003
     dw 0x7FFE
     dw 0x3FFC
-    dw 0x0000
     
     ; Terminator
     dw 0x0000
 
 welcome_hz:
-    ; 'W' - 12x12 bitmap
+    ; 'W'
     dw 0x8001
     dw 0x8001
     dw 0x8001
@@ -564,49 +499,51 @@ welcome_hz:
     dw 0x8001
     dw 0x8001
     
-    ; 'e' - 12x12 bitmap
+    ; 'e'
+    dw 0x0000
     dw 0x0000
     dw 0x3FFC
     dw 0x7FFE
     dw 0xC003
-    dw 0xFFFF
-    dw 0xFFFF
-    dw 0xC000
-    dw 0xC000
-    dw 0x7FFE
-    dw 0x3FFC
-    dw 0x0000
-    dw 0x0000
-    
-    ; 'l' - 12x12 bitmap
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    
-    ; 'c' - 12x12 bitmap
-    dw 0x0000
-    dw 0x3FFC
-    dw 0x7FFE
-    dw 0xC000
-    dw 0xC000
-    dw 0xC000
-    dw 0xC000
-    dw 0xC000
-    dw 0xC000
+    dw 0xC003
+    dw 0xC003
+    dw 0xC003
+    dw 0xC003
     dw 0x7FFE
     dw 0x3FFC
     dw 0x0000
     
-    ; 'o' - 12x12 bitmap
+    ; 'l'
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
+    
+    ; 'c'
+    dw 0x0000
+    dw 0x0000
+    dw 0x3FFC
+    dw 0x7FFE
+    dw 0xC003
+    dw 0xC003
+    dw 0xC003
+    dw 0xC003
+    dw 0xC003
+    dw 0x7FFE
+    dw 0x3FFC
+    dw 0x0000
+    
+    ; 'o'
+    dw 0x0000
+    dw 0x0000
     dw 0x3FFC
     dw 0x7FFE
     dw 0xE007
@@ -614,45 +551,43 @@ welcome_hz:
     dw 0xC003
     dw 0xC003
     dw 0xC003
-    dw 0xC003
-    dw 0xC003
     dw 0xE007
     dw 0x7FFE
     dw 0x3FFC
     
-    ; 'm' - 12x12 bitmap
+    ; 'm'
+    dw 0x0000
     dw 0x0000
     dw 0xF81F
-    dw 0xFC3F
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
+    dw 0xF81F
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
     
-    ; 'e' - 12x12 bitmap
+    ; 'e'
+    dw 0x0000
     dw 0x0000
     dw 0x3FFC
     dw 0x7FFE
     dw 0xC003
-    dw 0xFFFF
-    dw 0xFFFF
-    dw 0xC000
-    dw 0xC000
+    dw 0xC003
+    dw 0xC003
+    dw 0xC003
+    dw 0xC003
     dw 0x7FFE
     dw 0x3FFC
-    dw 0x0000
     dw 0x0000
     
     ; Terminator
     dw 0x0000
 
 username_hz:
-    ; 'U' - 12x12 bitmap
+    ; 'U'
     dw 0x8001
     dw 0x8001
     dw 0x8001
@@ -662,119 +597,119 @@ username_hz:
     dw 0x8001
     dw 0x8001
     dw 0x8001
+    dw 0x8001
+    dw 0x7FFE
+    dw 0x3FFC
+    
+    ; 's'
+    dw 0x0000
+    dw 0x0000
+    dw 0x3FFC
+    dw 0x7FFE
+    dw 0xC003
+    dw 0xC003
+    dw 0x3FFC
+    dw 0x7FFE
     dw 0xE007
-    dw 0x7FFE
-    dw 0x3FFC
-    
-    ; 's' - 12x12 bitmap
-    dw 0x0000
-    dw 0x3FFC
-    dw 0x7FFE
-    dw 0xC000
-    dw 0x3FFC
-    dw 0x7FFE
-    dw 0xE007
-    dw 0xC003
     dw 0xC003
     dw 0x7FFE
     dw 0x3FFC
-    dw 0x0000
     
-    ; 'e' - 12x12 bitmap
+    ; 'e'
+    dw 0x0000
     dw 0x0000
     dw 0x3FFC
     dw 0x7FFE
     dw 0xC003
-    dw 0xFFFF
-    dw 0xFFFF
-    dw 0xC000
-    dw 0xC000
+    dw 0xC003
+    dw 0xC003
+    dw 0xC003
+    dw 0xC003
     dw 0x7FFE
     dw 0x3FFC
     dw 0x0000
-    dw 0x0000
     
-    ; 'r' - 12x12 bitmap
+    ; 'r'
+    dw 0x0000
     dw 0x0000
     dw 0xF81F
-    dw 0xFC3F
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
+    dw 0xF81F
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
     
-    ; 'n' - 12x12 bitmap
+    ; 'n'
+    dw 0x0000
     dw 0x0000
     dw 0xF81F
-    dw 0xFC3F
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
+    dw 0xF81F
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
     
-    ; 'a' - 12x12 bitmap
+    ; 'a'
+    dw 0x0000
+    dw 0x0000
     dw 0x0FF0
     dw 0x1FF8
     dw 0x300C
     dw 0x300C
     dw 0x3FFC
-    dw 0x3FFC
-    dw 0x300C
     dw 0x300C
     dw 0x300C
     dw 0x3FFC
     dw 0x1FF8
     dw 0x0FF0
     
-    ; 'm' - 12x12 bitmap
+    ; 'm'
+    dw 0x0000
     dw 0x0000
     dw 0xF81F
-    dw 0xFC3F
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
+    dw 0xF81F
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
     
-    ; 'e' - 12x12 bitmap
+    ; 'e'
+    dw 0x0000
     dw 0x0000
     dw 0x3FFC
     dw 0x7FFE
     dw 0xC003
-    dw 0xFFFF
-    dw 0xFFFF
-    dw 0xC000
-    dw 0xC000
+    dw 0xC003
+    dw 0xC003
+    dw 0xC003
+    dw 0xC003
     dw 0x7FFE
     dw 0x3FFC
     dw 0x0000
-    dw 0x0000
     
-    ; ':' - 12x12 bitmap
-    dw 0x0000
-    dw 0x0000
-    dw 0x1800
-    dw 0x1800
+    ; ':'
     dw 0x0000
     dw 0x0000
     dw 0x0000
     dw 0x0000
-    dw 0x1800
-    dw 0x1800
+    dw 0x0000
+    dw 0x0000
+    dw 0x0000
+    dw 0x0000
+    dw 0x0000
+    dw 0x0000
     dw 0x0000
     dw 0x0000
     
@@ -782,129 +717,129 @@ username_hz:
     dw 0x0000
 
 password_hz:
-    ; 'P' - 12x12 bitmap
-    dw 0x8E00
-    dw 0x8E00
-    dw 0x8E00
-    dw 0x8E00
-    dw 0x8E00
-    dw 0xFC00
-    dw 0xF800
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
-    dw 0x8000
+    ; 'P'
+    dw 0xF81F
+    dw 0xF81F
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
     
-    ; 'a' - 12x12 bitmap
+    ; 'a'
+    dw 0x0000
+    dw 0x0000
     dw 0x0FF0
     dw 0x1FF8
     dw 0x300C
     dw 0x300C
     dw 0x3FFC
-    dw 0x3FFC
-    dw 0x300C
     dw 0x300C
     dw 0x300C
     dw 0x3FFC
     dw 0x1FF8
     dw 0x0FF0
     
-    ; 's' - 12x12 bitmap
+    ; 's'
+    dw 0x0000
     dw 0x0000
     dw 0x3FFC
     dw 0x7FFE
-    dw 0xC000
+    dw 0xC003
+    dw 0xC003
+    dw 0x3FFC
+    dw 0x7FFE
+    dw 0xE007
+    dw 0xC003
+    dw 0x7FFE
+    dw 0x3FFC
+    
+    ; 's'
+    dw 0x0000
+    dw 0x0000
+    dw 0x3FFC
+    dw 0x7FFE
+    dw 0xC003
+    dw 0xC003
+    dw 0x3FFC
+    dw 0x7FFE
+    dw 0xE007
+    dw 0xC003
+    dw 0x7FFE
+    dw 0x3FFC
+    
+    ; 'w'
+    dw 0x0000
+    dw 0x0000
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    
+    ; 'o'
+    dw 0x0000
+    dw 0x0000
     dw 0x3FFC
     dw 0x7FFE
     dw 0xE007
     dw 0xC003
     dw 0xC003
-    dw 0x7FFE
-    dw 0x3FFC
-    dw 0x0000
-    
-    ; 's' - 12x12 bitmap
-    dw 0x0000
-    dw 0x3FFC
-    dw 0x7FFE
-    dw 0xC000
-    dw 0x3FFC
-    dw 0x7FFE
-    dw 0xE007
-    dw 0xC003
-    dw 0xC003
-    dw 0x7FFE
-    dw 0x3FFC
-    dw 0x0000
-    
-    ; 'w' - 12x12 bitmap
-    dw 0x8001
-    dw 0x8001
-    dw 0x8001
-    dw 0x8001
-    dw 0x8001
-    dw 0x8001
-    dw 0x8001
-    dw 0x8001
-    dw 0x8001
-    dw 0x8001
-    dw 0x8001
-    dw 0x8001
-    
-    ; 'o' - 12x12 bitmap
-    dw 0x3FFC
-    dw 0x7FFE
-    dw 0xE007
-    dw 0xC003
-    dw 0xC003
-    dw 0xC003
-    dw 0xC003
     dw 0xC003
     dw 0xC003
     dw 0xE007
     dw 0x7FFE
     dw 0x3FFC
     
-    ; 'r' - 12x12 bitmap
+    ; 'r'
+    dw 0x0000
     dw 0x0000
     dw 0xF81F
-    dw 0xFC3F
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
+    dw 0xF81F
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
     
-    ; 'd' - 12x12 bitmap
+    ; 'd'
     dw 0x0000
-    dw 0x0FF0
-    dw 0x1FF8
-    dw 0x300C
-    dw 0x300C
+    dw 0x0000
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x7FFE
     dw 0x3FFC
-    dw 0x3FFC
-    dw 0x300C
-    dw 0x300C
-    dw 0x3FFC
-    dw 0x1FF8
-    dw 0x0FF0
     
-    ; ':' - 12x12 bitmap
-    dw 0x0000
-    dw 0x0000
-    dw 0x1800
-    dw 0x1800
+    ; ':'
     dw 0x0000
     dw 0x0000
     dw 0x0000
     dw 0x0000
-    dw 0x1800
-    dw 0x1800
+    dw 0x0000
+    dw 0x0000
+    dw 0x0000
+    dw 0x0000
+    dw 0x0000
+    dw 0x0000
     dw 0x0000
     dw 0x0000
     
@@ -912,7 +847,7 @@ password_hz:
     dw 0x0000
 
 login_hz:
-    ; 'L' - 12x12 bitmap
+    ; 'L'
     dw 0x8000
     dw 0x8000
     dw 0x8000
@@ -922,11 +857,13 @@ login_hz:
     dw 0x8000
     dw 0x8000
     dw 0x8000
-    dw 0xFFFF
-    dw 0xFFFF
-    dw 0x0000
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
     
-    ; 'o' - 12x12 bitmap
+    ; 'o'
+    dw 0x0000
+    dw 0x0000
     dw 0x3FFC
     dw 0x7FFE
     dw 0xE007
@@ -934,30 +871,28 @@ login_hz:
     dw 0xC003
     dw 0xC003
     dw 0xC003
+    dw 0xE007
+    dw 0x7FFE
+    dw 0x3FFC
+    
+    ; 'g'
+    dw 0x0000
+    dw 0x0000
+    dw 0x3FFC
+    dw 0x7FFE
+    dw 0xE007
+    dw 0xC003
+    dw 0xC003
     dw 0xC003
     dw 0xC003
     dw 0xE007
     dw 0x7FFE
     dw 0x3FFC
     
-    ; 'g' - 12x12 bitmap
-    dw 0x0000
-    dw 0x0FF0
-    dw 0x1FF8
-    dw 0x300C
-    dw 0x300C
-    dw 0x3FFC
-    dw 0x3FFC
-    dw 0x300C
-    dw 0x300C
-    dw 0x3FFC
-    dw 0x1FF8
-    dw 0x0FF0
-    
-    ; 'i' - 12x12 bitmap
-    dw 0x1800
-    dw 0x1800
-    dw 0x0000
+    ; 'i'
+    dw 0x8000
+    dw 0x8000
+    dw 0x8000
     dw 0x8000
     dw 0x8000
     dw 0x8000
@@ -968,19 +903,19 @@ login_hz:
     dw 0x8000
     dw 0x8000
     
-    ; 'n' - 12x12 bitmap
+    ; 'n'
+    dw 0x0000
     dw 0x0000
     dw 0xF81F
-    dw 0xFC3F
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
-    dw 0x8E71
+    dw 0xF81F
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
+    dw 0x8001
     
     ; Terminator
     dw 0x0000
