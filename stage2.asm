@@ -186,7 +186,7 @@ draw_rect_fast_col:
     pop bp
     ret
 
-; Draw HZK12 character using 1x1 pixels
+; Draw HZK12 character using BIOS interrupt (2x scaled for visibility)
 ; Input: SI = pointer to HZK12 data (12 words, 24 bytes)
 ;        [font_x], [font_y] = starting position (will NOT be modified)
 draw_hz_char:
@@ -218,16 +218,50 @@ hzk_draw_col:
     push bp
     push di
     
+    ; Calculate scaled position (2x)
     mov bx, [font_y]
-    add bx, bp        ; BX = Y = font_y + row
+    add bx, bp        ; BX = font_y + row
+    shl bx, 1         ; BX = (font_y + row) * 2
     
-    ; Draw 1x1 pixel at (DI, BX)
-    mov cx, di
+    mov dx, di
+    shl dx, 1         ; DX = col * 2
+    
+    ; Draw 2x2 block at (DX, BX)
+    push bx
+    push dx
+    
+    ; Pixel (0,0)
+    mov cx, dx
     mov dx, bx
     mov ah, 0x0c
     mov al, 0x0F      ; White
     xor bh, bh
     int 0x10
+    
+    ; Pixel (1,0)
+    inc cx
+    mov ah, 0x0c
+    mov al, 0x0F
+    xor bh, bh
+    int 0x10
+    
+    ; Pixel (0,1)
+    mov cx, dx
+    inc dx
+    mov ah, 0x0c
+    mov al, 0x0F
+    xor bh, bh
+    int 0x10
+    
+    ; Pixel (1,1)
+    inc cx
+    mov ah, 0x0c
+    mov al, 0x0F
+    xor bh, bh
+    int 0x10
+    
+    pop dx
+    pop bx
     
     pop di
     pop bp
