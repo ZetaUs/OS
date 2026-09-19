@@ -186,9 +186,59 @@ draw_rect_fast_col:
     pop bp
     ret
 
-; Draw HZK12 character using BIOS interrupt (2x scaled for visibility)
+; Helper: Set a single pixel in VGA planar mode
+; Input: CX=X, DX=Y, AL=color (0-15)
+set_pixel:
+    push bx
+    push es
+    push di
+    push si
+    
+    ; Save Y coordinate first (before DX is used for port)
+    mov si, dx        ; SI = Y
+    
+    ; ES = VGA memory
+    mov bx, 0xA000
+    mov es, bx
+    
+    ; Enable all 4 planes
+    mov dx, 0x03C4
+    mov al, 0x02
+    mov ah, 0x0F
+    out dx, ax
+    
+    ; Calculate offset = Y * 80 + X / 8
+    mov ax, si
+    mov bx, 80
+    mul bx            ; DX:AX = Y * 80
+    mov bx, ax        ; BX = Y * 80
+    
+    mov ax, cx        ; AX = X
+    mov cx, 8
+    xor dx, dx
+    div cx            ; AX = X/8, DX = X%8
+    add bx, ax        ; BX = offset
+    
+    ; Calculate bit mask = 1 << (7 - X%8)
+    mov cx, 7
+    sub cx, dx
+    mov dx, 1
+    shl dx, cl        ; DX = bit mask
+    
+    ; Set the bit
+    mov al, [es:bx]
+    or al, dl
+    mov [es:bx], al
+    
+    pop si
+    pop di
+    pop es
+    pop bx
+    ret
+
+; Draw HZK12 character using VGA planar mode (2x scaled)
 ; Input: SI = pointer to HZK12 data (12 words, 24 bytes)
-;        [font_x], [font_y] = starting position (will NOT be modified)
+;        [font_x], [font_y] = starting position
 draw_hz_char:
     push bp
     push si
@@ -197,84 +247,71 @@ draw_hz_char:
     push cx
     push dx
     
-    xor bp, bp        ; BP = current row (0-11)
+    ; Save base positions
+    mov bx, [font_y]  ; BX = base Y
+    mov bp, [font_x]  ; BP = base X
+    
+    xor di, di        ; DI = current row (0-11)
 
 hzk_draw_row:
-    cmp bp, 12
+    cmp di, 12
     jae hzk_draw_done
     
     mov ax, [si]
     add si, 2
-    mov cx, 12        ; CX = column counter (12 columns for HZK12)
-    mov di, [font_x]  ; DI = current X position
+    mov cx, 12        ; CX = column counter
+    xor dx, dx        ; DX = current column (0-11)
 
 hzk_draw_col:
     test ax, 0x8000
     jz hzk_draw_skip
     
+    ; Calculate scaled position: X = (BP + DX) * 2, Y = (BX + DI) * 2
     push ax
     push cx
     push si
-    push bp
     push di
-    
-    ; Calculate scaled position (2x)
-    mov bx, [font_y]
-    add bx, bp        ; BX = font_y + row
-    shl bx, 1         ; BX = (font_y + row) * 2
-    
-    mov dx, di
-    shl dx, 1         ; DX = col * 2
-    
-    ; Draw 2x2 block at (DX, BX)
-    push bx
     push dx
     
+    ; Draw 2x2 block
     ; Pixel (0,0)
     mov cx, dx
-    mov dx, bx
-    mov ah, 0x0c
+    add cx, bp
+    shl cx, 1         ; X * 2
+    mov dx, di
+    add dx, bx
+    shl dx, 1         ; Y * 2
     mov al, 0x0F      ; White
-    xor bh, bh
-    int 0x10
+    call set_pixel
     
     ; Pixel (1,0)
     inc cx
-    mov ah, 0x0c
     mov al, 0x0F
-    xor bh, bh
-    int 0x10
+    call set_pixel
     
     ; Pixel (0,1)
-    mov cx, dx
+    dec cx
     inc dx
-    mov ah, 0x0c
     mov al, 0x0F
-    xor bh, bh
-    int 0x10
+    call set_pixel
     
     ; Pixel (1,1)
     inc cx
-    mov ah, 0x0c
     mov al, 0x0F
-    xor bh, bh
-    int 0x10
+    call set_pixel
     
     pop dx
-    pop bx
-    
     pop di
-    pop bp
     pop si
     pop cx
     pop ax
 
 hzk_draw_skip:
     shl ax, 1
-    inc di            ; X += 1 (next column)
+    inc dx            ; DX = next column
     loop hzk_draw_col
     
-    inc bp            ; Next row
+    inc di            ; Next row
     jmp hzk_draw_row
 
 hzk_draw_done:
