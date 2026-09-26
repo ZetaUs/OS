@@ -2,30 +2,64 @@
 setlocal
 set "ROOT=%~dp0.."
 set "NASM=%ROOT%\Program\NASM\nasm.exe"
-set "GCC=D:\Program Files (x86)\Dev-Cpp\MinGW64\bin\gcc.exe"
-set "LD=D:\Program Files (x86)\Dev-Cpp\MinGW64\bin\ld.exe"
-set "OBJCOPY=D:\Program Files (x86)\Dev-Cpp\MinGW64\bin\objcopy.exe"
+set "DEVCPP_BIN="
+if defined DEVCPP_HOME if exist "%DEVCPP_HOME%\MinGW64\bin\g++.exe" set "DEVCPP_BIN=%DEVCPP_HOME%\MinGW64\bin"
+if not defined DEVCPP_BIN if exist "D:\Program\Dev-Cpp\MinGW64\bin\g++.exe" set "DEVCPP_BIN=D:\Program\Dev-Cpp\MinGW64\bin"
+if not defined DEVCPP_BIN if exist "%ProgramFiles(x86)%\Dev-Cpp\MinGW64\bin\g++.exe" set "DEVCPP_BIN=%ProgramFiles(x86)%\Dev-Cpp\MinGW64\bin"
+if not defined DEVCPP_BIN if exist "%ProgramFiles%\Dev-Cpp\MinGW64\bin\g++.exe" set "DEVCPP_BIN=%ProgramFiles%\Dev-Cpp\MinGW64\bin"
+if not defined DEVCPP_BIN (
+  for /f "delims=" %%P in ('where g++.exe 2^>nul') do if not defined DEVCPP_BIN set "DEVCPP_BIN=%%~dpP"
+)
+if not defined DEVCPP_BIN (
+  echo Dev-C++ MinGW compiler not found. Set DEVCPP_HOME to the Dev-C++ folder.
+  exit /b 1
+)
+set "GXX=%DEVCPP_BIN%\g++.exe"
+set "LD=%DEVCPP_BIN%\ld.exe"
+set "OBJCOPY=%DEVCPP_BIN%\objcopy.exe"
 set "OUT=%~dp0build"
 if not exist "%OUT%" mkdir "%OUT%"
 
-echo [1/4] Assembling boot sector...
+echo [1/5] Assembling boot sector...
 "%NASM%" -f bin "%~dp0boot.asm" -o "%OUT%\boot.bin"
 if errorlevel 1 exit /b 1
 
-echo [2/4] Assembling stage2...
+echo [2/5] Assembling stage2...
 "%NASM%" -f bin "%~dp0stage2.asm" -o "%OUT%\stage2.bin"
 if errorlevel 1 exit /b 1
 
-echo [3/4] Building disk image...
+echo [3/5] Compiling the freestanding C++ kernel with Dev-C++...
+"%GXX%" -m32 -std=c++11 -Os -fno-toplevel-reorder -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -fno-stack-protector -fno-pic -fno-pie -fno-builtin -c "%~dp0kernel.cpp" -o "%OUT%\kernel.o"
+if errorlevel 1 exit /b 1
+
+echo [4/5] Linking and flattening the kernel...
+"%LD%" -mi386pe --image-base 0 --section-alignment 16 --file-alignment 16 --section-start .text=0x10000 -e _kernel_main -o "%OUT%\kernel.exe" "%OUT%\kernel.o"
+if errorlevel 1 exit /b 1
+"%OBJCOPY%" --only-section=.text --only-section=.rdata --only-section=.data -O binary "%OUT%\kernel.exe" "%OUT%\kernel.bin"
+if errorlevel 1 exit /b 1
+
+for %%F in ("%OUT%\stage2.bin") do if %%~zF GTR 4096 (
+  echo Stage2 exceeds its 8-sector disk slot.
+  exit /b 1
+)
+for %%F in ("%OUT%\kernel.bin") do if %%~zF GTR 32768 (
+  echo Kernel exceeds its 64-sector disk slot.
+  exit /b 1
+)
+
+echo [5/5] Building disk images...
 
 :: Layout:
 ::   LBA 0: boot sector (512 bytes)
-::   LBA 1-64: stage2 (32KB)
-::   LBA 65+: HZK12 font
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$boot=[System.IO.File]::ReadAllBytes('%OUT%\boot.bin'); $stage2=[System.IO.File]::ReadAllBytes('%OUT%\stage2.bin'); $hzk12=[System.IO.File]::ReadAllBytes('%~dp0HZK\HZK12'); $imgSize=16*63*200*512; $pad=New-Object byte[] ($imgSize-512-32768-$hzk12.Length); $img=New-Object byte[] $imgSize; $boot.CopyTo($img,0); $stage2.CopyTo($img,512); $hzk12.CopyTo($img,512+32768); $pad.CopyTo($img,512+32768+$hzk12.Length); [System.IO.File]::WriteAllBytes('%OUT%\nova-os.img',$img)"
+::   LBA 1-8: stage2 (4KB reserved)
+::   LBA 9-72: C++ kernel (32KB reserved)
+::   LBA 73+: HZK12 font data
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$boot=[System.IO.File]::ReadAllBytes('%OUT%\boot.bin'); $stage2=[System.IO.File]::ReadAllBytes('%OUT%\stage2.bin'); $kernel=[System.IO.File]::ReadAllBytes('%OUT%\kernel.bin'); $hzk12=[System.IO.File]::ReadAllBytes('%~dp0HZK\HZK12'); $imgSize=16*63*200*512; $img=New-Object byte[] $imgSize; $boot.CopyTo($img,0); $stage2.CopyTo($img,512); $kernel.CopyTo($img,9*512); $hzk12.CopyTo($img,73*512); [System.IO.File]::WriteAllBytes('%OUT%\nova-os.img',$img)"
+if errorlevel 1 exit /b 1
 
 :: Also create a floppy image for testing
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$boot=[System.IO.File]::ReadAllBytes('%OUT%\boot.bin'); $stage2=[System.IO.File]::ReadAllBytes('%OUT%\stage2.bin'); $imgSize=1474560; $pad=New-Object byte[] ($imgSize-512-32768); $img=New-Object byte[] $imgSize; $boot.CopyTo($img,0); $stage2.CopyTo($img,512); $pad.CopyTo($img,512+32768); [System.IO.File]::WriteAllBytes('%OUT%\nova-os-floppy.img',$img)"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$boot=[System.IO.File]::ReadAllBytes('%OUT%\boot.bin'); $stage2=[System.IO.File]::ReadAllBytes('%OUT%\stage2.bin'); $kernel=[System.IO.File]::ReadAllBytes('%OUT%\kernel.bin'); $imgSize=1474560; $img=New-Object byte[] $imgSize; $boot.CopyTo($img,0); $stage2.CopyTo($img,512); $kernel.CopyTo($img,9*512); [System.IO.File]::WriteAllBytes('%OUT%\nova-os-floppy.img',$img)"
+if errorlevel 1 exit /b 1
 
 for %%F in ("%OUT%\boot.bin") do if not %%~zF==512 (
   echo Boot sector must be 512 bytes, got %%~zF bytes

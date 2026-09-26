@@ -15,6 +15,29 @@ static inline uint8_t in8(uint16_t port) {
     return value;
 }
 
+static void serial_initialize();
+static void serial_write(const char* text);
+static void write_line(uint16_t row, const char* text, uint8_t color);
+
+extern "C" __attribute__((noreturn)) void kernel_main() {
+    for (uint16_t cell = 0; cell < 80 * 25; ++cell) {
+        video_memory[cell] = 0x0720;
+    }
+
+    serial_initialize();
+    serial_write("Nova OS: C++ kernel started");
+    serial_write("Dev-C++ MinGW, 32-bit protected mode");
+
+    write_line(4, "NOVA OS", 0x0B);
+    write_line(6, "C++ kernel is running in 32-bit protected mode.", 0x0F);
+    write_line(8, "Built with the Dev-C++ MinGW toolchain.", 0x07);
+    write_line(10, "BIOS loaded the kernel from disk.", 0x07);
+
+    for (;;) {
+        __asm__ volatile("hlt");
+    }
+}
+
 static void serial_initialize() {
     out8(0x3F9, 0x00);
     out8(0x3FB, 0x80);
@@ -44,21 +67,3 @@ static void write_line(uint16_t row, const char* text, uint8_t color) {
     }
 }
 
-extern "C" __attribute__((noreturn)) void kernel_main() {
-    for (uint16_t cell = 0; cell < 80 * 25; ++cell) {
-        video_memory[cell] = 0x0720;
-    }
-
-    serial_initialize();
-    serial_write("Nova OS: C++ kernel started");
-    serial_write("Dev-C++ MinGW, 32-bit protected mode");
-
-    write_line(4, "NOVA OS", 0x0B);
-    write_line(6, "C++ kernel is running in 32-bit protected mode.", 0x0F);
-    write_line(8, "Built with the Dev-C++ MinGW toolchain.", 0x07);
-    write_line(10, "BIOS loaded the kernel from disk.", 0x07);
-
-    for (;;) {
-        __asm__ volatile("hlt");
-    }
-}
