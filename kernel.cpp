@@ -31,12 +31,12 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
     fill(1);
     rectangle(24, 20, 272, 160, 8);
     rectangle(28, 24, 264, 152, 1);
-    text(72, 42, "NOVA OS", 15, 3);
-    text(91, 78, "LOADING", 11, 1);
+    text(97, 42, "NOVA OS", 15, 3);
+    text(139, 78, "LOADING", 11, 1);
     rectangle(58, 103, 204, 12, 8);
     rectangle(62, 107, 196, 4, 3);
-    text(62, 130, "BIOS KERNEL", 7, 1);
-    text(62, 143, "DEV-C++ MIN-GW", 7, 1);
+    text(127, 130, "BIOS KERNEL", 7, 1);
+    text(118, 143, "DEV-C++ MIN-GW", 7, 1);
 
     for (uint8_t percent = 0; percent <= 100; percent += 10) {
         progress(percent);
@@ -45,8 +45,8 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
     }
 
     rectangle(62, 130, 190, 13, 1);
-    text(62, 130, "SYSTEM READY", 10, 1);
-    text(62, 143, "C++ KERNEL ONLINE", 15, 1);
+    text(124, 130, "SYSTEM READY", 10, 1);
+    text(109, 143, "C++ KERNEL ONLINE", 15, 1);
     serial_write("Nova OS loading screen ready");
 
     for (;;) {
