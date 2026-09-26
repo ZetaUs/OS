@@ -42,7 +42,7 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
 
     for (uint8_t percent = 0; percent <= 100; percent += 10) {
         progress(percent);
-        for (volatile uint32_t delay = 0; delay < 220000; ++delay) {
+        for (volatile uint32_t delay = 0; delay < 5000000; ++delay) {
         }
     }
 
