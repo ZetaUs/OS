@@ -5,6 +5,9 @@ typedef unsigned int uint32_t;
 typedef volatile uint8_t* vram_ptr;
 static vram_ptr const vram = reinterpret_cast<vram_ptr>(0xA0000);
 
+#include "logo_data.h"
+#include "load_data.h"
+
 static inline void out8(uint16_t port, uint8_t value) {
     __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
 }
@@ -31,10 +34,14 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
     fill(1);
     rectangle(24, 20, 272, 160, 8);
     rectangle(28, 24, 264, 152, 1);
+    
+    draw_logo((320 - logo_width) / 2, 28);
     text(97, 42, "NOVA OS", 15, 3);
     text(139, 78, "LOADING", 11, 1);
     rectangle(58, 103, 204, 12, 8);
     rectangle(62, 107, 196, 4, 3);
+    
+    draw_load((320 - load_width) / 2, 118);
     text(127, 130, "BIOS KERNEL", 7, 1);
     text(118, 143, "DEV-C++ MIN-GW", 7, 1);
 
