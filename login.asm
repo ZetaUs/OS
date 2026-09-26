@@ -147,7 +147,7 @@ draw_rect:
     mov ebx, [ebp+12]     ; y
     mov ecx, [ebp+16]     ; width
     mov edx, [ebp+20]     ; height
-    mov esi, [ebp+24]     ; color
+    movzx esi, byte [ebp+24]  ; color (zero-extend to 32-bit)
     
     mov edi, VGA_MEMORY
     imul ebx, SCREEN_WIDTH
@@ -157,7 +157,7 @@ draw_rect:
 .row_loop:
     push ecx
 .col_loop:
-    mov [edi], esi
+    mov [edi], sil
     inc edi
     dec ecx
     jnz .col_loop
@@ -168,7 +168,7 @@ draw_rect:
     jnz .row_loop
     
     pop ebp
-    ret 16  ; Clean up 5 parameters (20 bytes) - but we already added esp,20, so just ret
+    ret
 
 section .data
     welcome_msg: db 'Welcome!', 0
