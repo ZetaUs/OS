@@ -11,11 +11,11 @@ COLOR_TEXT equ 15     ; White text
 COLOR_INPUT equ 0     ; Black input box
 COLOR_BUTTON equ 14   ; Yellow button
 
-global login_screen
+global _login_screen
 
 section .text
 
-login_screen:
+_login_screen:
     push ebp
     mov ebp, esp
     push ebx
