@@ -145,6 +145,8 @@ draw_rect:
     imul edi, ebx, SCREEN_WIDTH
     add edi, eax
     
+    movzx esi, si  ; Ensure esi is properly sized
+    
     .row_loop:
         push ecx
         .col_loop:

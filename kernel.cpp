@@ -48,6 +48,10 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
 
     serial_write("Nova OS loading screen ready");
 
+    // Call login screen
+    extern "C" void login_screen();
+    login_screen();
+
     for (;;) {
         __asm__ volatile("hlt");
     }
