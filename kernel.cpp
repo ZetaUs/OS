@@ -1,9 +1,9 @@
 typedef unsigned short uint16_t;
 typedef unsigned char uint8_t;
+typedef unsigned int uint32_t;
 
-static volatile uint16_t* const video_memory =
-    reinterpret_cast<volatile uint16_t*>(0xB8000);
-static uint16_t cursor = 0;
+typedef volatile uint8_t* vram_ptr;
+static vram_ptr const vram = reinterpret_cast<vram_ptr>(0xA0000);
 
 static inline void out8(uint16_t port, uint8_t value) {
     __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
@@ -17,24 +17,104 @@ static inline uint8_t in8(uint16_t port) {
 
 static void serial_initialize();
 static void serial_write(const char* text);
-static void write_line(uint16_t row, const char* text, uint8_t color);
+static void fill(uint8_t color);
+static void rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint8_t color);
+static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t scale);
+static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8_t scale);
+static void progress(uint8_t percent);
 
 extern "C" __attribute__((noreturn)) void kernel_main() {
-    for (uint16_t cell = 0; cell < 80 * 25; ++cell) {
-        video_memory[cell] = 0x0720;
-    }
-
     serial_initialize();
     serial_write("Nova OS: C++ kernel started");
     serial_write("Dev-C++ MinGW, 32-bit protected mode");
 
-    write_line(4, "NOVA OS", 0x0B);
-    write_line(6, "C++ kernel is running in 32-bit protected mode.", 0x0F);
-    write_line(8, "Built with the Dev-C++ MinGW toolchain.", 0x07);
-    write_line(10, "BIOS loaded the kernel from disk.", 0x07);
+    fill(1);
+    rectangle(24, 20, 272, 160, 8);
+    rectangle(28, 24, 264, 152, 1);
+    text(72, 42, "NOVA OS", 15, 3);
+    text(91, 78, "LOADING", 11, 1);
+    rectangle(58, 103, 204, 12, 8);
+    rectangle(62, 107, 196, 4, 3);
+    text(62, 130, "BIOS KERNEL", 7, 1);
+    text(62, 143, "DEV-C++ MIN-GW", 7, 1);
+
+    for (uint8_t percent = 0; percent <= 100; percent += 10) {
+        progress(percent);
+        for (volatile uint32_t delay = 0; delay < 220000; ++delay) {
+        }
+    }
+
+    rectangle(62, 130, 190, 13, 1);
+    text(62, 130, "SYSTEM READY", 10, 1);
+    text(62, 143, "C++ KERNEL ONLINE", 15, 1);
+    serial_write("Nova OS loading screen ready");
 
     for (;;) {
         __asm__ volatile("hlt");
+    }
+}
+
+static void fill(uint8_t color) {
+    for (uint32_t index = 0; index < 320u * 200u; ++index) {
+        vram[index] = color;
+    }
+}
+
+static void rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint8_t color) {
+    for (uint16_t row = 0; row < height; ++row) {
+        for (uint16_t column = 0; column < width; ++column) {
+            vram[(y + row) * 320u + x + column] = color;
+        }
+    }
+}
+
+static void progress(uint8_t percent) {
+    rectangle(62, 107, 196, 4, 3);
+    rectangle(62, 107, static_cast<uint16_t>(196u * percent / 100u), 4, 10);
+}
+
+static const uint8_t* glyph(char value) {
+    static const uint8_t blank[7] = {0, 0, 0, 0, 0, 0, 0};
+    static const uint8_t letters[27][7] = {
+        {14, 17, 17, 31, 17, 17, 17}, {30, 17, 17, 30, 17, 17, 30},
+        {14, 17, 16, 16, 16, 17, 14}, {30, 17, 17, 17, 17, 17, 30},
+        {31, 16, 16, 30, 16, 16, 31}, {31, 16, 16, 30, 16, 16, 16},
+        {14, 17, 16, 23, 17, 17, 15}, {17, 17, 17, 31, 17, 17, 17},
+        {14, 4, 4, 4, 4, 4, 14}, {7, 2, 2, 2, 18, 18, 12},
+        {17, 18, 20, 24, 20, 18, 17}, {16, 16, 16, 16, 16, 16, 31},
+        {17, 27, 21, 21, 17, 17, 17}, {17, 25, 21, 19, 17, 17, 17},
+        {14, 17, 17, 17, 17, 17, 14}, {30, 17, 17, 30, 16, 16, 16},
+        {14, 17, 17, 17, 21, 18, 13}, {30, 17, 17, 30, 20, 18, 17},
+        {15, 16, 16, 14, 1, 1, 30}, {31, 4, 4, 4, 4, 4, 4},
+        {17, 17, 17, 17, 17, 17, 14}, {17, 17, 17, 17, 17, 10, 4},
+        {17, 17, 17, 21, 21, 27, 17}, {17, 17, 10, 4, 10, 17, 17},
+        {17, 17, 10, 4, 4, 4, 4}, {31, 1, 2, 4, 8, 16, 31},
+        {0, 0, 0, 0, 0, 0, 0}
+    };
+    if (value >= 'A' && value <= 'Z') {
+        return letters[value - 'A'];
+    }
+    if (value == ' ') {
+        return blank;
+    }
+    return blank;
+}
+
+static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t scale) {
+    const uint8_t* bitmap = glyph(value);
+    for (uint8_t row = 0; row < 7; ++row) {
+        for (uint8_t column = 0; column < 5; ++column) {
+            if ((bitmap[row] & (1u << (4u - column))) != 0) {
+                rectangle(x + column * scale, y + row * scale, scale, scale, color);
+            }
+        }
+    }
+}
+
+static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8_t scale) {
+    while (*value != '\0') {
+        character(x, y, *value++, color, scale);
+        x += static_cast<uint16_t>(6u * scale);
     }
 }
 
@@ -48,22 +128,12 @@ static void serial_initialize() {
     out8(0x3FC, 0x0B);
 }
 
-static void serial_write(const char* text) {
-    while (*text != '\0') {
+static void serial_write(const char* text_value) {
+    while (*text_value != '\0') {
         while ((in8(0x3FD) & 0x20) == 0) {
         }
-        out8(0x3F8, static_cast<uint8_t>(*text++));
+        out8(0x3F8, static_cast<uint8_t>(*text_value++));
     }
     out8(0x3F8, '\r');
     out8(0x3F8, '\n');
 }
-
-static void write_line(uint16_t row, const char* text, uint8_t color) {
-    uint16_t column = 0;
-    while (text[column] != '\0' && column < 80) {
-        video_memory[row * 80 + column] =
-            static_cast<uint16_t>((color << 8) | static_cast<uint8_t>(text[column]));
-        ++column;
-    }
-}
-
