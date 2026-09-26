@@ -142,22 +142,29 @@ login_screen:
 draw_rect:
     push ebp
     mov ebp, esp
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
     
     mov eax, [ebp+8]      ; x
     mov ebx, [ebp+12]     ; y
     mov ecx, [ebp+16]     ; width
     mov edx, [ebp+20]     ; height
-    movzx esi, byte [ebp+24]  ; color (zero-extend to 32-bit)
+    mov esi, [ebp+24]     ; color
     
     mov edi, VGA_MEMORY
     imul ebx, SCREEN_WIDTH
     add edi, ebx
     add edi, eax
     
+    and esi, 0xFF  ; Ensure color is 8-bit
+    
 .row_loop:
     push ecx
 .col_loop:
-    mov [edi], sil
+    mov byte [edi], sil
     inc edi
     dec ecx
     jnz .col_loop
@@ -167,6 +174,11 @@ draw_rect:
     dec edx
     jnz .row_loop
     
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
     pop ebp
     ret
 
