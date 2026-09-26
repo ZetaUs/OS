@@ -11,7 +11,13 @@ start:
     mov [boot_drive], dl
     sti
 
-    mov ax, 0x0003
+    ; Enable A20 line (fast method via keyboard controller)
+    in al, 0x92
+    or al, 2
+    out 0x92, al
+
+    ; Switch to VGA mode 0x13 for kernel
+    mov ax, 0x0013
     int 0x10
 
     mov si, kernel_dap
@@ -22,6 +28,15 @@ start:
 
     cli
     lgdt [gdt_descriptor]
+    
+    ; Disable interrupts and prepare for protected mode
+    in al, 0x21
+    or al, 0xFF
+    out 0x21, al
+    in al, 0xA1
+    or al, 0xFF
+    out 0xA1, al
+    
     mov eax, cr0
     or eax, 1
     mov cr0, eax

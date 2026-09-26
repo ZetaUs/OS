@@ -28,11 +28,11 @@ start:
     mov ax, 0xA000
     mov es, ax
     mov di, 10 * 320 + 10
-    mov al, 2          ; Green pixel
+    mov al, 10         ; Light green pixel
     stosb
     
     ; Jump to stage2
-    jmp 0x07E0:0x0000
+    jmp 0x0000:0x7E00
 
 disk_error:
     mov si, msg_err
