@@ -35,14 +35,10 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
     rectangle(24, 20, 272, 160, 8);
     rectangle(28, 24, 264, 152, 1);
     
-    draw_logo(120, 28);
-    draw_load(210, 28);
-    text(97, 118, "NOVA OS", 15, 3);
-    text(139, 135, "LOADING", 11, 1);
-    rectangle(58, 148, 204, 12, 8);
-    rectangle(62, 152, 196, 4, 3);
-    text(127, 168, "BIOS KERNEL", 7, 1);
-    text(118, 180, "DEV-C++ MIN-GW", 7, 1);
+    draw_logo((320 - logo_width) / 2, 40);
+    
+    rectangle(58, 145, 204, 12, 8);
+    rectangle(62, 149, 196, 4, 3);
 
     for (uint8_t percent = 0; percent <= 100; percent += 10) {
         progress(percent);
@@ -50,9 +46,10 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
         }
     }
 
-    rectangle(62, 130, 190, 13, 1);
-    text(124, 130, "SYSTEM READY", 10, 1);
-    text(109, 143, "C++ KERNEL ONLINE", 15, 1);
+    // 加载完成后显示
+    rectangle(62, 165, 190, 13, 1);
+    text(124, 165, "SYSTEM READY", 10, 1);
+    text(109, 178, "C++ KERNEL ONLINE", 15, 1);
     serial_write("Nova OS loading screen ready");
 
     for (;;) {
@@ -75,8 +72,8 @@ static void rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, u
 }
 
 static void progress(uint8_t percent) {
-    rectangle(62, 107, 196, 4, 3);
-    rectangle(62, 107, static_cast<uint16_t>(196u * percent / 100u), 4, 10);
+    rectangle(62, 149, 196, 4, 3);
+    rectangle(62, 149, static_cast<uint16_t>(196u * percent / 100u), 4, 10);
 }
 
 static const uint8_t* glyph(char value) {
