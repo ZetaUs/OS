@@ -26,72 +26,49 @@ login_screen:
     rep stosb
     
     ; Draw login box border
-    mov eax, 80     ; x
-    mov ebx, 40     ; y
-    mov ecx, 160    ; width
-    mov edx, 120    ; height
-    mov esi, COLOR_BORDER
+    push COLOR_BORDER
+    push 120    ; height
+    push 160    ; width
+    push 40     ; y
+    push 80     ; x
     call draw_rect
+    add esp, 20
     
     ; Draw inner box
-    mov eax, 84
-    mov ebx, 44
-    mov ecx, 152
-    mov edx, 112
-    mov esi, COLOR_INPUT
+    push COLOR_INPUT
+    push 112    ; height
+    push 152    ; width
+    push 44     ; y
+    push 84     ; x
     call draw_rect
-    
-    ; Draw "LOGIN" title
-    mov eax, 135    ; x (centered)
-    mov ebx, 55     ; y
-    mov esi, login_title
-    mov edi, COLOR_TEXT
-    call draw_text_simple
-    
-    ; Draw "Username:" label
-    mov eax, 95
-    mov ebx, 75
-    mov esi, username_label
-    mov edi, COLOR_TEXT
-    call draw_text_simple
+    add esp, 20
     
     ; Draw username input box
-    mov eax, 90
-    mov ebx, 85
-    mov ecx, 140
-    mov edx, 12
-    mov esi, COLOR_BORDER
+    push COLOR_BORDER
+    push 12     ; height
+    push 140    ; width
+    push 85     ; y
+    push 90     ; x
     call draw_rect
-    
-    ; Draw "Password:" label
-    mov eax, 95
-    mov ebx, 105
-    mov esi, password_label
-    mov edi, COLOR_TEXT
-    call draw_text_simple
+    add esp, 20
     
     ; Draw password input box
-    mov eax, 90
-    mov ebx, 115
-    mov ecx, 140
-    mov edx, 12
-    mov esi, COLOR_BORDER
+    push COLOR_BORDER
+    push 12     ; height
+    push 140    ; width
+    push 115    ; y
+    push 90     ; x
     call draw_rect
+    add esp, 20
     
     ; Draw "LOGIN" button
-    mov eax, 120
-    mov ebx, 135
-    mov ecx, 80
-    mov edx, 16
-    mov esi, COLOR_BUTTON
+    push COLOR_BUTTON
+    push 16     ; height
+    push 80     ; width
+    push 135    ; y
+    push 120    ; x
     call draw_rect
-    
-    ; Draw button text
-    mov eax, 135
-    mov ebx, 138
-    mov esi, button_text
-    mov edi, COLOR_INPUT
-    call draw_text_simple
+    add esp, 20
     
     ; Wait for user input
 .wait_loop:
@@ -113,11 +90,40 @@ login_screen:
 
 .login_success:
     ; Draw "Welcome!" message
-    mov eax, 125
-    mov ebx, 90
+    mov edi, VGA_MEMORY
+    mov eax, 90
+    mov ebx, 160
+    imul ebx, SCREEN_WIDTH
+    add edi, ebx
+    add edi, eax
+    
     mov esi, welcome_msg
-    mov edi, COLOR_TEXT
-    call draw_text_simple
+    mov ecx, 8
+    mov edx, COLOR_TEXT
+.welcome_loop:
+    lodsb
+    test al, al
+    jz .welcome_done
+    
+    push ecx
+    mov ecx, 8
+.welcome_row:
+    push ecx
+    mov ecx, 8
+.welcome_col:
+    mov [edi], edx
+    inc edi
+    dec ecx
+    jnz .welcome_col
+    pop ecx
+    add edi, SCREEN_WIDTH
+    sub edi, 8
+    dec ecx
+    jnz .welcome_row
+    pop ecx
+    add edi, 8
+    jmp .welcome_loop
+.welcome_done:
     
     ; Wait a moment
     mov ecx, 2000000
@@ -132,88 +138,37 @@ login_screen:
     ret
 
 ; Function: draw_rect
-; Input: eax=x, ebx=y, ecx=width, edx=height, esi=color
+; Stack: [ebp+8]=x, [ebp+12]=y, [ebp+16]=width, [ebp+20]=height, [ebp+24]=color
 draw_rect:
     push ebp
     mov ebp, esp
-    push edi
-    push ebx
-    push ecx
-    push edx
+    
+    mov eax, [ebp+8]      ; x
+    mov ebx, [ebp+12]     ; y
+    mov ecx, [ebp+16]     ; width
+    mov edx, [ebp+20]     ; height
+    mov esi, [ebp+24]     ; color
     
     mov edi, VGA_MEMORY
-    imul edi, ebx, SCREEN_WIDTH
+    imul ebx, SCREEN_WIDTH
+    add edi, ebx
     add edi, eax
     
-    movzx esi, si  ; Ensure esi is properly sized
-    
-    .row_loop:
-        push ecx
-        .col_loop:
-            mov [edi], sil
-            inc edi
-            dec ecx
-            jnz .col_loop
-        pop ecx
-        add edi, SCREEN_WIDTH
-        sub edi, ecx
-        dec edx
-        jnz .row_loop
-    
-    pop edx
-    pop ecx
-    pop ebx
-    pop edi
-    pop ebp
-    ret
-
-; Function: draw_text_simple
-; Input: eax=x, ebx=y, esi=text, edi=color
-draw_text_simple:
-    push ebp
-    mov ebp, esp
-    push ebx
+.row_loop:
     push ecx
-    push edx
+.col_loop:
+    mov [edi], esi
+    inc edi
+    dec ecx
+    jnz .col_loop
+    pop ecx
+    add edi, SCREEN_WIDTH
+    sub edi, [ebp+16]
+    dec edx
+    jnz .row_loop
     
-    mov edx, VGA_MEMORY
-    imul edx, ebx, SCREEN_WIDTH
-    add edx, eax
-    
-    .char_loop:
-        lodsb
-        test al, al
-        jz .done
-        
-        ; Draw simple character placeholder (8x8 block)
-        mov ecx, 8
-        .row:
-            push ecx
-            mov ecx, 8
-            .col:
-                mov [edx], dil
-                inc edx
-                dec ecx
-                jnz .col
-            pop ecx
-            add edx, SCREEN_WIDTH
-            sub edx, 8
-            dec ecx
-            jnz .row
-        
-        add edx, 8  ; space between characters
-        jmp .char_loop
-    
-    .done:
-        pop edx
-        pop ecx
-        pop ebx
-        pop ebp
-        ret
+    pop ebp
+    ret 16  ; Clean up 5 parameters (20 bytes) - but we already added esp,20, so just ret
 
 section .data
-    login_title: db 'LOGIN', 0
-    username_label: db 'Username:', 0
-    password_label: db 'Password:', 0
-    button_text: db 'LOGIN', 0
     welcome_msg: db 'Welcome!', 0
