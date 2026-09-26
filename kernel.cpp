@@ -36,7 +36,7 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
     rectangle(28, 24, 264, 152, 1);
     
     draw_logo(120, 28);
-    draw_load(220, 28);
+    draw_load(210, 28);
     text(97, 118, "NOVA OS", 15, 3);
     text(139, 135, "LOADING", 11, 1);
     rectangle(58, 148, 204, 12, 8);
