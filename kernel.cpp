@@ -25,8 +25,7 @@ static void rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, u
 static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t scale);
 static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8_t scale);
 static void progress(uint8_t percent);
-
-extern "C" void _login_screen();
+static void login_screen();
 
 extern "C" __attribute__((noreturn)) void kernel_main() {
     serial_initialize();
@@ -51,10 +50,53 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
     serial_write("Nova OS loading screen ready");
 
     // Call login screen
-    _login_screen();
+    login_screen();
 
     for (;;) {
         __asm__ volatile("hlt");
+    }
+}
+
+static void login_screen() {
+    // Clear screen with blue background
+    fill(1);
+    
+    // Draw login box border
+    rectangle(80, 40, 160, 120, 8);
+    
+    // Draw inner box
+    rectangle(84, 44, 152, 112, 0);
+    
+    // Draw "LOGIN" title
+    text(135, 55, "LOGIN", 15, 2);
+    
+    // Draw "Username:" label
+    text(95, 75, "Username:", 15, 1);
+    
+    // Draw username input box
+    rectangle(90, 85, 140, 12, 8);
+    
+    // Draw "Password:" label
+    text(95, 105, "Password:", 15, 1);
+    
+    // Draw password input box
+    rectangle(90, 115, 140, 12, 8);
+    
+    // Draw "LOGIN" button
+    rectangle(120, 135, 80, 16, 14);
+    
+    // Draw button text
+    text(135, 138, "LOGIN", 0, 1);
+    
+    // Wait for user input (simple delay)
+    for (volatile uint32_t delay = 0; delay < 10000000; ++delay) {
+    }
+    
+    // Draw "Welcome!" message
+    text(120, 90, "Welcome!", 15, 2);
+    
+    // Wait a moment
+    for (volatile uint32_t delay = 0; delay < 5000000; ++delay) {
     }
 }
 
