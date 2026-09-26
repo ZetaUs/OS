@@ -46,10 +46,6 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
         }
     }
 
-    // 加载完成后显示
-    rectangle(62, 165, 190, 13, 1);
-    text(124, 165, "SYSTEM READY", 10, 1);
-    text(109, 178, "C++ KERNEL ONLINE", 15, 1);
     serial_write("Nova OS loading screen ready");
 
     for (;;) {
