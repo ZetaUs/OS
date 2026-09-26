@@ -1,0 +1,4 @@
+# Nova OS Logo Color
+# VGA Palette Index 14 - Yellow
+# RGB: (252, 252, 84)
+# Hex: #cacf09
