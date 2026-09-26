@@ -18,6 +18,11 @@ section .text
 login_screen:
     push ebp
     mov ebp, esp
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
     
     ; Clear screen with blue background
     mov edi, VGA_MEMORY
@@ -89,16 +94,15 @@ login_screen:
     jmp .wait_loop
 
 .login_success:
-    ; Draw "Welcome!" message
+    ; Draw "Welcome!" message at center
     mov edi, VGA_MEMORY
-    mov eax, 90
-    mov ebx, 160
+    mov eax, 120
+    mov ebx, 90
     imul ebx, SCREEN_WIDTH
     add edi, ebx
     add edi, eax
     
     mov esi, welcome_msg
-    mov ecx, 8
     mov edx, COLOR_TEXT
 .welcome_loop:
     lodsb
@@ -111,7 +115,7 @@ login_screen:
     push ecx
     mov ecx, 8
 .welcome_col:
-    mov [edi], edx
+    mov byte [edi], dl
     inc edi
     dec ecx
     jnz .welcome_col
@@ -134,6 +138,11 @@ login_screen:
     jmp .login_exit
 
 .login_exit:
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
     pop ebp
     ret
 
@@ -161,10 +170,12 @@ draw_rect:
     
     and esi, 0xFF  ; Ensure color is 8-bit
     
+    mov eax, esi   ; Copy color to eax for byte access
+    
 .row_loop:
     push ecx
 .col_loop:
-    mov byte [edi], sil
+    mov byte [edi], al
     inc edi
     dec ecx
     jnz .col_loop
