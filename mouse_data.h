@@ -19,12 +19,12 @@ static const uint8_t mouse_data[208] = {
     0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-static void draw_mouse(uint16_t x, uint16_t y) {
+static void draw_mouse(uint16_t x, uint16_t y, uint8_t color) {
     for (uint16_t row = 0; row < mouse_height; ++row) {
         for (uint16_t col = 0; col < mouse_width; ++col) {
-            uint8_t color = mouse_data[row * mouse_width + col];
-            if (color == 14) {
-                vram[(y + row) * 320u + x + col] = 15;
+            uint8_t pixel = mouse_data[row * mouse_width + col];
+            if (pixel == 14) {
+                vram[(y + row) * 320u + x + col] = color;
             }
         }
     }
