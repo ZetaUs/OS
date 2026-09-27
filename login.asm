@@ -49,22 +49,12 @@ _login_screen:
     call draw_rect
     add esp, 20
     
-    ; Initialize PS/2 mouse
-    call mouse_init
-    
-    ; Draw initial mouse cursor
-    push COLOR_MOUSE
-    push 100    ; Y
-    push 160    ; X
-    call draw_mouse_cursor
-    add esp, 12
-    
-    ; Main loop: wait for Enter key or mouse click
+    ; Main loop: wait for Enter key
 .wait_loop:
     ; Check keyboard input
     in al, 0x64
     test al, 1
-    jz .check_mouse
+    jz .wait_loop
     
     in al, 0x60
     cmp al, 0x1C    ; Enter key pressed
@@ -72,49 +62,6 @@ _login_screen:
     cmp al, 0x9C    ; Enter key released
     je .login_exit
     
-.check_mouse:
-    ; Update mouse position
-    call mouse_update
-    cmp eax, 0
-    je .no_mouse_move
-    
-    ; Redraw mouse (clear old position, draw new position)
-    push COLOR_BG
-    push [prev_mouse_y]
-    push [prev_mouse_x]
-    call draw_mouse_cursor
-    add esp, 12
-    
-    push COLOR_MOUSE
-    push [g_mouse_y]
-    push [g_mouse_x]
-    call draw_mouse_cursor
-    add esp, 12
-    
-.no_mouse_move:
-    ; Check if mouse is on button area (x:110-210, y:90-106)
-    mov eax, [g_mouse_x]
-    cmp eax, 110
-    jl .no_click
-    cmp eax, 210
-    jg .no_click
-    mov eax, [g_mouse_y]
-    cmp eax, 90
-    jl .no_click
-    cmp eax, 106
-    jg .no_click
-    
-    ; Check for left mouse button click
-    in al, 0x64
-    test al, 1
-    jz .no_click
-    in al, 0x60
-    test al, 1      ; Left button click bit
-    jnz .login_exit
-    
-.no_click:
-    ; HLT to reduce CPU usage
-    hlt
     jmp .wait_loop
 
 .login_exit:
