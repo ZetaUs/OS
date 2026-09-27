@@ -65,14 +65,10 @@ static void login_screen() {
     rectangle(80, 40, 160, 120, 8);
     rectangle(82, 42, 156, 116, 0);
     
-    // Draw "系统" title (系=0xCFB5, 统=0xB3B3)
-    chinese_char(124, 50, 0xCF, 0xB5, 15);
-    chinese_char(136, 50, 0xB3, 0xB3, 15);
-    
-    // Draw "登录" button (登 not in font, use "启动" instead: 启=0xC6F4, 动=0xB6AF)
+    // Draw "登录" button (登=0xB5C7, 录=0xC2BC)
     rectangle(110, 90, 100, 16, 14);
-    chinese_char(136, 93, 0xC6, 0xF4, 0);
-    chinese_char(148, 93, 0xB6, 0xAF, 0);
+    chinese_char(136, 93, 0xB5, 0xC7, 0);
+    chinese_char(148, 93, 0xC2, 0xBC, 0);
     
     // Draw mouse cursor
     draw_mouse(200, 100);
