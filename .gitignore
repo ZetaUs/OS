@@ -1,5 +1,4 @@
 build/
-*.py
 *.bin
 *.raw
 *.bmp

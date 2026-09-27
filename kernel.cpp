@@ -10,6 +10,7 @@ static vram_ptr const vram = reinterpret_cast<vram_ptr>(0xA0000);
 #include "logo_data.h"
 #include "load_data.h"
 #include "HZK X Python/hzk_mini12.h"
+#include "mouse_data.h"
 
 static inline void out8(uint16_t port, uint8_t value) {
     __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
@@ -31,6 +32,9 @@ static void progress(uint8_t percent);
 static void login_screen();
 static void desktop_screen();
 static void chinese_char(uint16_t x, uint16_t y, uint16_t gb, uint8_t color);
+static void mouse_init();
+static void mouse_update();
+static void draw_mouse_cursor(uint16_t x, uint16_t y, uint8_t color);
 
 extern "C" __attribute__((noreturn)) void kernel_main() {
     serial_initialize();
