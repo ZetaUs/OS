@@ -75,6 +75,14 @@ kernel_dap:
     dd 9
     dd 0
 
+hzk_dap:
+    db 0x10, 0
+    dw 288
+    dw 0
+    dw 0x2000
+    dd 73
+    dd 0
+
 boot_drive: db 0
 error_message: db 'Kernel load error', 0
 

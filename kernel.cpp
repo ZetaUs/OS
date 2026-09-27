@@ -60,17 +60,17 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
 static void login_screen() {
     fill(1);
     rectangle(80, 40, 160, 120, 8);
-    rectangle(84, 44, 152, 112, 0);
-    text(130, 55, "登录", 15, 2);
-    text(95, 75, "用户名:", 15, 1);
-    rectangle(90, 85, 140, 12, 8);
-    text(95, 105, "密码:", 15, 1);
-    rectangle(90, 115, 140, 12, 8);
-    rectangle(120, 135, 80, 16, 14);
-    text(130, 138, "登录", 0, 1);
-    for (volatile uint32_t delay = 0; delay < 10000000; ++delay) {}
-    text(120, 90, "欢迎!", 15, 2);
-    for (volatile uint32_t delay = 0; delay < 5000000; ++delay) {}
+    rectangle(82, 42, 156, 116, 0);
+    text(130, 50, "LOGIN", 15, 2);
+    text(90, 80, "USER", 15, 1);
+    rectangle(120, 78, 100, 12, 7);
+    text(90, 100, "PASS", 15, 1);
+    rectangle(120, 98, 100, 12, 7);
+    rectangle(110, 125, 100, 16, 14);
+    text(145, 128, "ENTER", 0, 1);
+    for (;;) {
+        __asm__ volatile("hlt");
+    }
 }
 
 static void fill(uint8_t color) {
@@ -132,35 +132,8 @@ static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t
 
 static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8_t scale) {
     while (*value != '\0') {
-        // Check for Chinese character (GB2312 encoding)
-        if (static_cast<uint8_t>(*value) > 0xA0 && *(value + 1) != '\0') {
-            // Chinese character - use HZK12 font
-            uint8_t high = static_cast<uint8_t>(*value) - 0xA0;
-            uint8_t low = static_cast<uint8_t>(*(value + 1)) - 0xA0;
-            
-            // HZK12 offset calculation
-            uint32_t offset = ((high - 1) * 94 + (low - 1)) * 24;
-            
-            // Read from HZK12 (loaded at 0x49000)
-            const uint8_t* hzk12 = reinterpret_cast<const uint8_t*>(0x49000);
-            
-            // Draw 12x12 Chinese character
-            for (uint8_t row = 0; row < 12; ++row) {
-                uint16_t line = (hzk12[offset + row * 2] << 8) | hzk12[offset + row * 2 + 1];
-                for (uint8_t col = 0; col < 12; ++col) {
-                    if (line & (1 << (11 - col))) {
-                        rectangle(x + col * scale, y + row * scale, scale, scale, color);
-                    }
-                }
-            }
-            
-            x += static_cast<uint16_t>(12 * scale);
-            value += 2;
-        } else {
-            // ASCII character
-            character(x, y, *value++, color, scale);
-            x += static_cast<uint16_t>(6 * scale);
-        }
+        character(x, y, *value++, color, scale);
+        x += static_cast<uint16_t>(6u * scale);
     }
 }
 
