@@ -49,6 +49,21 @@ _login_screen:
     call draw_rect
     add esp, 20
     
+    ; Draw Chinese characters "登录" on button
+    ; 登: 12x12 at (148, 93), color=0 (black)
+    push 0      ; color (black)
+    push 93     ; y
+    push 148    ; x
+    call draw_chinese_deng
+    add esp, 12
+    
+    ; 录: 12x12 at (160, 93), color=0 (black)
+    push 0      ; color (black)
+    push 93     ; y
+    push 160    ; x
+    call draw_chinese_lu
+    add esp, 12
+    
     ; Main loop: wait for Enter key
 .wait_loop:
     ; Check keyboard input
