@@ -394,33 +394,35 @@ draw_chinese_deng:
     mov ecx, 12
 .deng_row:
     push ecx
-    movzx eax, byte [esi]
-    movzx edx, byte [esi+1]
+    mov al, [esi]
+    mov ah, [esi+1]
     mov ecx, 12
+    xor edx, edx
 .deng_col:
-    cmp ecx, 8
-    jge .check_high
-    ; Low byte (bits 0-7)
-    mov ebx, eax
-    shr ebx, 7
-    and ebx, 1
-    jmp .draw_pixel
-.check_high:
-    ; High byte (bits 8-11)
-    mov ebx, edx
-    mov eax, ecx
-    sub eax, 8
-    mov ecx2, 7
-    sub ecx2, eax
-    shr ebx, cl
-    and ebx, 1
-    mov ecx, eax
-.draw_pixel:
-    test ebx, ebx
+    push ecx
+    cmp edx, 8
+    jl .deng_low
+    ; High byte
+    mov cl, ah
+    sub edx, 8
+    shr cl, 7
+    and cl, 1
+    add edx, 8
+    jmp .deng_draw
+.deng_low:
+    ; Low byte
+    mov cl, al
+    shr cl, 7
+    and cl, 1
+.deng_draw:
+    shl al, 1
+    test cl, cl
     jz .deng_skip
     mov byte [edi], sil
 .deng_skip:
     inc edi
+    pop ecx
+    inc edx
     dec ecx
     jnz .deng_col
     pop ecx
@@ -462,33 +464,35 @@ draw_chinese_lu:
     mov ecx, 12
 .lu_row:
     push ecx
-    movzx eax, byte [esi]
-    movzx edx, byte [esi+1]
+    mov al, [esi]
+    mov ah, [esi+1]
     mov ecx, 12
+    xor edx, edx
 .lu_col:
-    cmp ecx, 8
-    jge .lu_check_high
-    ; Low byte (bits 0-7)
-    mov ebx, eax
-    shr ebx, 7
-    and ebx, 1
-    jmp .lu_draw_pixel
-.lu_check_high:
-    ; High byte (bits 8-11)
-    mov ebx, edx
-    mov eax, ecx
-    sub eax, 8
-    mov ecx2, 7
-    sub ecx2, eax
-    shr ebx, cl
-    and ebx, 1
-    mov ecx, eax
-.lu_draw_pixel:
-    test ebx, ebx
+    push ecx
+    cmp edx, 8
+    jl .lu_low
+    ; High byte
+    mov cl, ah
+    sub edx, 8
+    shr cl, 7
+    and cl, 1
+    add edx, 8
+    jmp .lu_draw
+.lu_low:
+    ; Low byte
+    mov cl, al
+    shr cl, 7
+    and cl, 1
+.lu_draw:
+    shl al, 1
+    test cl, cl
     jz .lu_skip
     mov byte [edi], sil
 .lu_skip:
     inc edi
+    pop ecx
+    inc edx
     dec ecx
     jnz .lu_col
     pop ecx
@@ -520,4 +524,3 @@ section .bss
     g_mouse_y resd 1
     prev_mouse_x resd 1
     prev_mouse_y resd 1
-    ecx2 resd 1
