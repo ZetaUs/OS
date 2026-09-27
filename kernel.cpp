@@ -9,7 +9,7 @@ static vram_ptr const vram = reinterpret_cast<vram_ptr>(0xA0000);
 
 #include "logo_data.h"
 #include "load_data.h"
-#include "mouse_data.h"
+#include "HZK X Python/hzk_mini12.h"
 
 static inline void out8(uint16_t port, uint8_t value) {
     __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
@@ -29,58 +29,8 @@ static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t
 static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8_t scale);
 static void progress(uint8_t percent);
 static void login_screen();
-
-static uint16_t g_mouse_x = 160;
-static uint16_t g_mouse_y = 100;
-
-static void mouse_init() {
-    out8(0x64, 0xA8);
-    out8(0x64, 0x20);
-    uint8_t s = in8(0x60);
-    s |= 2;
-    out8(0x64, 0x60);
-    out8(0x60, s);
-    out8(0x64, 0xD4);
-    out8(0x60, 0xFF);
-    in8(0x60);
-    out8(0x64, 0xD4);
-    out8(0x60, 0xF4);
-    in8(0x60);
-}
-
-static void mouse_update() {
-    static int phase = 0;
-    static uint8_t byte0 = 0;
-    static int8_t mx = 0, my = 0;
-    
-    if ((in8(0x64) & 1) == 0) return;
-    
-    uint8_t b = in8(0x60);
-    
-    if (phase == 0) {
-        if (b & 8) {
-            byte0 = b;
-            phase = 1;
-        }
-    } else if (phase == 1) {
-        mx = (int8_t)b;
-        phase = 2;
-    } else if (phase == 2) {
-        my = (int8_t)b;
-        phase = 0;
-        
-        int new_x = (int)g_mouse_x + mx;
-        int new_y = (int)g_mouse_y - my;
-        
-        if (new_x < 0) new_x = 0;
-        if (new_x > 307) new_x = 307;
-        if (new_y < 0) new_y = 0;
-        if (new_y > 184) new_y = 184;
-        
-        g_mouse_x = (uint16_t)new_x;
-        g_mouse_y = (uint16_t)new_y;
-    }
-}
+static void desktop_screen();
+static void chinese_char(uint16_t x, uint16_t y, uint16_t gb, uint8_t color);
 
 extern "C" __attribute__((noreturn)) void kernel_main() {
     serial_initialize();
@@ -104,7 +54,6 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
 
     serial_write("Nova OS loading screen ready");
 
-    // Call login screen
     login_screen();
 
     for (;;) {
@@ -118,24 +67,57 @@ static void login_screen() {
     rectangle(82, 42, 156, 116, 0);
     
     rectangle(110, 90, 100, 16, 14);
-    text(145, 93, "ENTER", 0, 1);
+    chinese_char(148, 93, 0xB5C7, 0);
+    chinese_char(160, 93, 0xC2BC, 0);
     
-    mouse_init();
-    draw_mouse(g_mouse_x, g_mouse_y, 15);
-    
-    uint16_t prev_x = g_mouse_x;
-    uint16_t prev_y = g_mouse_y;
+    serial_write("Login screen: waiting for key press");
     
     for (;;) {
-        mouse_update();
-        
-        if (g_mouse_x != prev_x || g_mouse_y != prev_y) {
-            draw_mouse(prev_x, prev_y, 1);
-            draw_mouse(g_mouse_x, g_mouse_y, 15);
-            prev_x = g_mouse_x;
-            prev_y = g_mouse_y;
+        if ((in8(0x64) & 1) != 0) {
+            uint8_t scancode = in8(0x60);
+            serial_write("Key pressed");
+            if (scancode == 0x1C) {
+                serial_write("Enter detected");
+                break;
+            }
         }
-        
+        __asm__ volatile("hlt");
+    }
+    
+    desktop_screen();
+}
+
+static void chinese_char(uint16_t x, uint16_t y, uint16_t gb, uint8_t color) {
+    const unsigned char* glyph = 0;
+    uint8_t gb_high = (gb >> 8) & 0xFF;
+    uint8_t gb_low = gb & 0xFF;
+    
+    for (int i = 0; i < HZK12_MAP_COUNT; i++) {
+        if (hzk12_mapping[i].gb_high == gb_high && hzk12_mapping[i].gb_low == gb_low) {
+            glyph = &kernel_hzk12_mini[hzk12_mapping[i].idx * HZK12_PER_GLYPH];
+            break;
+        }
+    }
+    
+    if (!glyph) return;
+    
+    for (int row = 0; row < HZK12_HEIGHT; row++) {
+        unsigned char byte1 = glyph[row * 2];
+        unsigned char byte2 = glyph[row * 2 + 1];
+        for (int col = 0; col < HZK12_WIDTH; col++) {
+            unsigned char bit = (col < 8) ? (byte1 >> (7 - col)) : (byte2 >> (15 - col));
+            if (bit & 1) {
+                vram[(y + row) * 320u + x + col] = color;
+            }
+        }
+    }
+}
+
+static void desktop_screen() {
+    fill(1);
+    text(10, 10, "Nova OS Desktop", 15, 1);
+    
+    for (;;) {
         __asm__ volatile("hlt");
     }
 }
