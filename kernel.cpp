@@ -30,6 +30,72 @@ static void chinese_char(uint16_t x, uint16_t y, uint8_t gb_high, uint8_t gb_low
 static void progress(uint8_t percent);
 static void login_screen();
 
+static uint16_t mouse_x = 200;
+static uint16_t mouse_y = 100;
+static uint8_t prev_mouse_data[13 * 16];
+
+static void save_background(uint16_t x, uint16_t y) {
+    for (uint16_t row = 0; row < mouse_height; ++row) {
+        for (uint16_t col = 0; col < mouse_width; ++col) {
+            prev_mouse_data[row * mouse_width + col] = vram[(y + row) * 320u + x + col];
+        }
+    }
+}
+
+static void restore_background(uint16_t x, uint16_t y) {
+    for (uint16_t row = 0; row < mouse_height; ++row) {
+        for (uint16_t col = 0; col < mouse_width; ++col) {
+            vram[(y + row) * 320u + x + col] = prev_mouse_data[row * mouse_width + col];
+        }
+    }
+}
+
+static void read_mouse() {
+    static int32_t dx = 0, dy = 0;
+    
+    while ((in8(0x64) & 0x01) != 0) {
+        uint8_t status = in8(0x60);
+        
+        static uint8_t state = 0;
+        static int8_t move_x, move_y;
+        
+        if (state == 0) {
+            if (status & 0x08) {
+                move_x = (status & 0x10) ? -1 : ((status & 0x20) ? 1 : 0);
+                move_y = (status & 0x20) ? -1 : ((status & 0x10) ? 1 : 0);
+                state = 1;
+            }
+        } else if (state == 1) {
+            dx += move_x;
+            state = 2;
+        } else if (state == 2) {
+            dy += move_y;
+            state = 0;
+        }
+    }
+    
+    if (dx != 0 || dy != 0) {
+        restore_background(mouse_x, mouse_y);
+        
+        int32_t new_x = (int32_t)mouse_x + dx;
+        int32_t new_y = (int32_t)mouse_y + dy;
+        
+        if (new_x < 0) new_x = 0;
+        if (new_x > 320 - mouse_width) new_x = 320 - mouse_width;
+        if (new_y < 0) new_y = 0;
+        if (new_y > 200 - mouse_height) new_y = 200 - mouse_height;
+        
+        mouse_x = (uint16_t)new_x;
+        mouse_y = (uint16_t)new_y;
+        
+        save_background(mouse_x, mouse_y);
+        draw_mouse(mouse_x, mouse_y);
+        
+        dx = 0;
+        dy = 0;
+    }
+}
+
 extern "C" __attribute__((noreturn)) void kernel_main() {
     serial_initialize();
     serial_write("Nova OS: C++ kernel started");
@@ -70,10 +136,12 @@ static void login_screen() {
     chinese_char(148, 93, 0xB5, 0xC7, 0);
     chinese_char(160, 93, 0xC2, 0xBC, 0);
     
-    // Draw mouse cursor
-    draw_mouse(200, 100);
+    // Initialize mouse
+    save_background(mouse_x, mouse_y);
+    draw_mouse(mouse_x, mouse_y);
     
     for (;;) {
+        read_mouse();
         __asm__ volatile("hlt");
     }
 }
