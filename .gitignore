@@ -1,6 +1,5 @@
 build/
 *.bin
-*.bmp
 *.lst
 *.log
 *.img
