@@ -10,7 +10,6 @@ static vram_ptr const vram = reinterpret_cast<vram_ptr>(0xA0000);
 #include "logo_data.h"
 #include "load_data.h"
 #include "mouse_data.h"
-#include "HZK X Python/hzk_mini12.h"
 
 static inline void out8(uint16_t port, uint8_t value) {
     __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
@@ -28,7 +27,6 @@ static void fill(uint8_t color);
 static void rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint8_t color);
 static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t scale);
 static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8_t scale);
-static void chinese_char(uint16_t x, uint16_t y, uint8_t gb_high, uint8_t gb_low, uint8_t color);
 static void progress(uint8_t percent);
 static void login_screen();
 
@@ -81,26 +79,26 @@ static void mouse_initialize() {
 }
 
 static void update_mouse() {
-    uint8_t mouse_cycle = 0;
-    int8_t mouse_data[3];
+    static uint8_t mouse_cycle = 0;
+    static int8_t mouse_buf[3];
     
     while ((in8(0x64) & 0x01) != 0) {
         uint8_t data = in8(0x60);
         
         if (mouse_cycle == 0) {
             if (data & 0x08) {
-                mouse_data[0] = data;
+                mouse_buf[0] = data;
                 mouse_cycle = 1;
             }
         } else if (mouse_cycle == 1) {
-            mouse_data[1] = (int8_t)data;
+            mouse_buf[1] = (int8_t)data;
             mouse_cycle = 2;
         } else if (mouse_cycle == 2) {
-            mouse_data[2] = (int8_t)data;
+            mouse_buf[2] = (int8_t)data;
             mouse_cycle = 0;
             
-            g_mouse_x += mouse_data[1];
-            g_mouse_y -= mouse_data[2];
+            g_mouse_x += mouse_buf[1];
+            g_mouse_y -= mouse_buf[2];
             
             if (g_mouse_x > 320 - mouse_width) g_mouse_x = 320 - mouse_width;
             if (g_mouse_y > 200 - mouse_height) g_mouse_y = 200 - mouse_height;
@@ -144,8 +142,7 @@ static void login_screen() {
     rectangle(82, 42, 156, 116, 0);
     
     rectangle(110, 90, 100, 16, 14);
-    chinese_char(148, 93, 0xB5, 0xC7, 0);
-    chinese_char(160, 93, 0xC2, 0xBC, 0);
+    text(145, 93, "ENTER", 0, 1);
     
     mouse_initialize();
     draw_mouse(g_mouse_x, g_mouse_y);
@@ -218,27 +215,6 @@ static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8
     while (*value != '\0') {
         character(x, y, *value++, color, scale);
         x += static_cast<uint16_t>(6u * scale);
-    }
-}
-
-static void chinese_char(uint16_t x, uint16_t y, uint8_t gb_high, uint8_t gb_low, uint8_t color) {
-    int idx = -1;
-    for (uint16_t i = 0; i < HZK12_MAP_COUNT; ++i) {
-        if (hzk12_mapping[i].gb_high == gb_high && hzk12_mapping[i].gb_low == gb_low) {
-            idx = hzk12_mapping[i].idx;
-            break;
-        }
-    }
-    if (idx < 0) return;
-    
-    const uint8_t* glyph_data = kernel_hzk12_mini + idx * HZK12_PER_GLYPH;
-    for (uint8_t row = 0; row < HZK12_HEIGHT; ++row) {
-        uint16_t bits = (static_cast<uint16_t>(glyph_data[row * 2]) << 8) | glyph_data[row * 2 + 1];
-        for (uint8_t col = 0; col < HZK12_WIDTH; ++col) {
-            if ((bits & (1u << (15u - col))) != 0) {
-                vram[(y + row) * 320u + x + col] = color;
-            }
-        }
     }
 }
 
