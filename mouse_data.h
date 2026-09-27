@@ -30,7 +30,7 @@ static void draw_mouse(uint16_t x, uint16_t y) {
         for (uint16_t col = 0; col < mouse_width; ++col) {
             uint8_t color = mouse_data[row * mouse_width + col];
             if (color != 255) {
-                vram[(y + row) * 320u + x + col] = 0;
+                vram[(y + row) * 320u + x + col] = 15;
             }
         }
     }
