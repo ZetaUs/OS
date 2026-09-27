@@ -53,13 +53,15 @@ static void restore_background(uint16_t x, uint16_t y) {
 }
 
 static void read_mouse() {
-    static int32_t dx = 0, dy = 0;
+    static int32_t dx = 0;
+    static int32_t dy = 0;
     
     while ((in8(0x64) & 0x01) != 0) {
         uint8_t status = in8(0x60);
         
         static uint8_t state = 0;
-        static int8_t move_x, move_y;
+        static int8_t move_x = 0;
+        static int8_t move_y = 0;
         
         if (state == 0) {
             if (status & 0x08) {
