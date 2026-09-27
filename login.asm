@@ -172,12 +172,12 @@ draw_rect:
     add edi, ebx
     add edi, eax
     
-    and esi, 0xFF
+    movzx eax, byte [ebp+24]  ; color
     
 .row_loop:
     push ecx
 .col_loop:
-    mov byte [edi], sil
+    mov byte [edi], al
     inc edi
     dec ecx
     jnz .col_loop
@@ -337,18 +337,21 @@ draw_mouse_cursor:
 .row_loop_mouse:
     push ecx
     mov ecx, 13           ; width
-    xor esi, esi          ; col index
+    xor ebx, ebx          ; col index
     
 .col_loop_mouse:
-    movzx eax, byte [mouse_data + edx * 13 + esi]
+    mov eax, edx
+    imul eax, 13
+    add eax, ebx
+    movzx eax, byte [mouse_data + eax]
     cmp eax, 14
     jne .skip_pixel
     
-    mov byte [edi], sil
+    mov byte [edi], cl
     
 .skip_pixel:
     inc edi
-    inc esi
+    inc ebx
     dec ecx
     jnz .col_loop_mouse
     
