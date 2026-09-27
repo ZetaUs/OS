@@ -69,9 +69,9 @@ static void login_screen() {
     chinese_char(124, 50, 0xCF, 0xB5, 15);
     chinese_char(136, 50, 0xB3, 0xB3, 15);
     
-    // Draw "用户" (用=0xD3C3, 人=0xC8CB)
+    // Draw "用户" (用=0xD3C3, 户=0xBBA7)
     chinese_char(90, 80, 0xD3, 0xC3, 15);
-    chinese_char(102, 80, 0xC8, 0xCB, 15);
+    chinese_char(102, 80, 0xBB, 0xA7, 15);
     
     rectangle(120, 78, 100, 12, 7);
     
