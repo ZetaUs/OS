@@ -8,11 +8,11 @@ SCREEN_WIDTH equ 320
 COLOR_BG equ 1
 COLOR_TEXT equ 15
 
-global __desktop_screen
+global ___desktop_screen
 
 section .text
 
-__desktop_screen:
+___desktop_screen:
     push ebp
     mov ebp, esp
     push ebx

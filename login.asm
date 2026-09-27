@@ -12,11 +12,11 @@ COLOR_BUTTON equ 14
 COLOR_TEXT equ 0
 COLOR_MOUSE equ 15
 
-global __login_screen
+global ___login_screen
 
 section .text
 
-__login_screen:
+___login_screen:
     push ebp
     mov ebp, esp
     push ebx
