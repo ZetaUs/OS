@@ -29,11 +29,11 @@ echo [2/5] Assembling stage2...
 if errorlevel 1 exit /b 1
 
 echo [3/5] Assembling login screen...
-"%NASM%" -f elf "%~dp0login.asm" -o "%OUT%\login.o"
+"%NASM%" -f win32 "%~dp0login.asm" -o "%OUT%\login.o"
 if errorlevel 1 exit /b 1
 
 echo [4/5] Assembling desktop screen...
-"%NASM%" -f elf "%~dp0desktop.asm" -o "%OUT%\desktop.o"
+"%NASM%" -f win32 "%~dp0desktop.asm" -o "%OUT%\desktop.o"
 if errorlevel 1 exit /b 1
 
 echo [5/5] Compiling the freestanding C++ kernel with Dev-C++...
