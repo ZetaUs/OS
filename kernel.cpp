@@ -67,8 +67,8 @@ static void login_screen() {
     
     // Draw "登录" button (登=0xB5C7, 录=0xC2BC)
     rectangle(110, 90, 100, 16, 14);
-    chinese_char(136, 93, 0xB5, 0xC7, 0);
-    chinese_char(148, 93, 0xC2, 0xBC, 0);
+    chinese_char(148, 93, 0xB5, 0xC7, 0);
+    chinese_char(160, 93, 0xC2, 0xBC, 0);
     
     // Draw mouse cursor
     draw_mouse(200, 100);
