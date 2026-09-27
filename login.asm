@@ -319,7 +319,7 @@ draw_mouse_cursor:
     
     mov eax, [ebp+8]      ; x
     mov ebx, [ebp+12]     ; y
-    mov esi, [ebp+16]     ; color
+    movzx esi, byte [ebp+16]  ; color
     
     mov edi, VGA_MEMORY
     imul ebx, SCREEN_WIDTH
@@ -347,7 +347,7 @@ draw_mouse_cursor:
     cmp eax, 14
     jne .skip_pixel
     
-    mov byte [edi], cl
+    mov byte [edi], sil
     
 .skip_pixel:
     inc edi
