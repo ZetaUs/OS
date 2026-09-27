@@ -49,20 +49,41 @@ _login_screen:
     call draw_rect
     add esp, 20
     
-    ; Draw Chinese characters "登录" on button
-    ; 登: 12x12 at (148, 93), color=0 (black)
-    push 0      ; color (black)
-    push 93     ; y
-    push 148    ; x
-    call draw_chinese_deng
-    add esp, 12
+    ; Draw "登" character at (148, 93) - 12x12 pixels, black color
+    mov edi, VGA_MEMORY
+    mov eax, 93
+    imul eax, SCREEN_WIDTH
+    add eax, 148
+    add edi, eax
+    mov esi, .deng_bits
+    mov ecx, 144
+.draw_deng:
+    lodsb
+    test al, al
+    jz .skip_deng
+    mov byte [edi], 0  ; Black
+.skip_deng:
+    inc edi
+    dec ecx
+    jnz .draw_deng
     
-    ; 录: 12x12 at (160, 93), color=0 (black)
-    push 0      ; color (black)
-    push 93     ; y
-    push 160    ; x
-    call draw_chinese_lu
-    add esp, 12
+    ; Draw "录" character at (160, 93) - 12x12 pixels, black color
+    mov edi, VGA_MEMORY
+    mov eax, 93
+    imul eax, SCREEN_WIDTH
+    add eax, 160
+    add edi, eax
+    mov esi, .lu_bits
+    mov ecx, 144
+.draw_lu:
+    lodsb
+    test al, al
+    jz .skip_lu
+    mov byte [edi], 0  ; Black
+.skip_lu:
+    inc edi
+    dec ecx
+    jnz .draw_lu
     
     ; Main loop: wait for Enter key
 .wait_loop:
@@ -78,6 +99,35 @@ _login_screen:
     je .login_exit
     
     jmp .wait_loop
+
+; Character bitmap data (embedded in code section)
+.deng_bits:
+    db 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0
+    db 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0
+    db 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0
+    db 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0
+    db 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0
+    db 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0
+    db 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0
+    db 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0
+    db 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0
+    db 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0
+    db 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1
+    db 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+
+.lu_bits:
+    db 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0
+    db 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0
+    db 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0
+    db 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0
+    db 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    db 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0
+    db 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0
+    db 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0
+    db 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0
+    db 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1
+    db 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0
+    db 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0
 
 .login_exit:
     pop edi
