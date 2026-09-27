@@ -74,22 +74,58 @@ static void login_screen() {
     chinese_char(148, 93, 0xB5C7, 0);
     chinese_char(160, 93, 0xC2BC, 0);
     
-    uint8_t scancode;
+    mouse_init();
+    
+    uint16_t mouse_x = 160;
+    uint16_t mouse_y = 100;
+    uint16_t prev_mouse_x = mouse_x;
+    uint16_t prev_mouse_y = mouse_y;
+    
+    draw_mouse_cursor(mouse_x, mouse_y, 15);
+    
     for (;;) {
+        uint8_t scancode;
+        int got_key = 0;
+        int got_click = 0;
+        
         __asm__ volatile(
-            "1:\n"
-            "    inb $0x64, %%al\n"
-            "    testb $0x01, %%al\n"
-            "    jz 1b\n"
-            "    inb $0x60, %%al\n"
-            "    movb %%al, %0\n"
-            : "=m"(scancode)
+            "inb $0x64, %%al\n"
+            "testb $0x01, %%al\n"
+            "jz 2f\n"
+            "inb $0x60, %%al\n"
+            "movb %%al, %0\n"
+            "movb $1, %1\n"
+            "jmp 3f\n"
+            "2:\n"
+            "movb $0, %1\n"
+            "3:\n"
+            : "=m"(scancode), "=m"(got_key)
             :
             : "al"
         );
-        if (scancode == 0x1C) {
+        
+        if (got_key && scancode == 0x1C) {
             break;
         }
+        
+        mouse_update();
+        
+        if (mouse_x != prev_mouse_x || mouse_y != prev_mouse_y) {
+            draw_mouse_cursor(prev_mouse_x, prev_mouse_y, 1);
+            draw_mouse_cursor(mouse_x, mouse_y, 15);
+            prev_mouse_x = mouse_x;
+            prev_mouse_y = mouse_y;
+        }
+        
+        if (mouse_x >= 110 && mouse_x <= 210 && mouse_y >= 90 && mouse_y <= 106) {
+            got_click = 1;
+        }
+        
+        if (got_click) {
+            break;
+        }
+        
+        __asm__ volatile("hlt");
     }
     
     desktop_screen();
@@ -127,6 +163,86 @@ static void desktop_screen() {
     
     for (;;) {
         __asm__ volatile("hlt");
+    }
+}
+
+static uint16_t g_mouse_x = 160;
+static uint16_t g_mouse_y = 100;
+
+static void mouse_init() {
+    __asm__ volatile(
+        "mov $0xA8, %%al\n"
+        "outb %%al, $0x64\n"
+        "mov $0x20, %%al\n"
+        "outb %%al, $0x64\n"
+        "inb $0x60, %%al\n"
+        "orb $0x02, %%al\n"
+        "mov $0x60, %%al\n"
+        "outb %%al, $0x64\n"
+        "inb $0x60, %%al\n"
+        "mov %%al, %%bl\n"
+        "mov $0xD4, %%al\n"
+        "outb %%al, $0x64\n"
+        "mov $0xF4, %%al\n"
+        "outb %%al, $0x60\n"
+        "inb $0x60, %%al\n"
+        :
+        :
+        : "al", "bl"
+    );
+}
+
+static void mouse_update() {
+    static int phase = 0;
+    static int8_t mx = 0, my = 0;
+    uint8_t b;
+    int has_data = 0;
+    
+    __asm__ volatile(
+        "inb $0x64, %%al\n"
+        "testb $0x01, %%al\n"
+        "jz 2f\n"
+        "inb $0x60, %%al\n"
+        "movb %%al, %0\n"
+        "movb $1, %1\n"
+        "jmp 3f\n"
+        "2:\n"
+        "movb $0, %1\n"
+        "3:\n"
+        : "=m"(b), "=m"(has_data)
+        :
+        : "al"
+    );
+    
+    if (!has_data) return;
+    
+    if (phase == 0) {
+        if (b & 0x08) {
+            phase = 1;
+        }
+    } else if (phase == 1) {
+        mx = (int8_t)b;
+        phase = 2;
+    } else if (phase == 2) {
+        my = (int8_t)b;
+        phase = 0;
+        
+        g_mouse_x += mx;
+        g_mouse_y -= my;
+        
+        if (g_mouse_x > 307) g_mouse_x = 307;
+        if (g_mouse_y > 184) g_mouse_y = 184;
+    }
+}
+
+static void draw_mouse_cursor(uint16_t x, uint16_t y, uint8_t color) {
+    for (uint16_t row = 0; row < mouse_height; ++row) {
+        for (uint16_t col = 0; col < mouse_width; ++col) {
+            uint8_t pixel = mouse_data[row * mouse_width + col];
+            if (pixel == 14) {
+                vram[(y + row) * 320u + x + col] = color;
+            }
+        }
     }
 }
 
