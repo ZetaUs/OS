@@ -370,7 +370,7 @@ draw_mouse_cursor:
     pop ebp
     ret
 
-; Chinese character "登" (12x12)
+; Chinese character "登" (12x12) - index 117
 draw_chinese_deng:
     push ebp
     mov ebp, esp
@@ -389,20 +389,44 @@ draw_chinese_deng:
     add edi, ebx
     add edi, eax
     
-    ; Simplified "登" pattern (12x12)
+    ; 登 bitmap data (12 rows, 2 bytes per row)
+    mov esi, deng_font
     mov ecx, 12
 .deng_row:
     push ecx
+    movzx eax, byte [esi]
+    movzx edx, byte [esi+1]
     mov ecx, 12
 .deng_col:
-    ; Simple pattern for demo
+    cmp ecx, 8
+    jge .check_high
+    ; Low byte (bits 0-7)
+    mov ebx, eax
+    shr ebx, 7
+    and ebx, 1
+    jmp .draw_pixel
+.check_high:
+    ; High byte (bits 8-11)
+    mov ebx, edx
+    mov eax, ecx
+    sub eax, 8
+    mov ecx2, 7
+    sub ecx2, eax
+    shr ebx, cl
+    and ebx, 1
+    mov ecx, eax
+.draw_pixel:
+    test ebx, ebx
+    jz .deng_skip
     mov byte [edi], sil
+.deng_skip:
     inc edi
     dec ecx
     jnz .deng_col
     pop ecx
     add edi, SCREEN_WIDTH
     sub edi, 12
+    add esi, 2
     dec ecx
     jnz .deng_row
     
@@ -414,7 +438,7 @@ draw_chinese_deng:
     pop ebp
     ret
 
-; Chinese character "录" (12x12)
+; Chinese character "录" (12x12) - index 118
 draw_chinese_lu:
     push ebp
     mov ebp, esp
@@ -433,19 +457,44 @@ draw_chinese_lu:
     add edi, ebx
     add edi, eax
     
-    ; Simplified "录" pattern (12x12)
+    ; 录 bitmap data (12 rows, 2 bytes per row)
+    mov esi, lu_font
     mov ecx, 12
 .lu_row:
     push ecx
+    movzx eax, byte [esi]
+    movzx edx, byte [esi+1]
     mov ecx, 12
 .lu_col:
+    cmp ecx, 8
+    jge .lu_check_high
+    ; Low byte (bits 0-7)
+    mov ebx, eax
+    shr ebx, 7
+    and ebx, 1
+    jmp .lu_draw_pixel
+.lu_check_high:
+    ; High byte (bits 8-11)
+    mov ebx, edx
+    mov eax, ecx
+    sub eax, 8
+    mov ecx2, 7
+    sub ecx2, eax
+    shr ebx, cl
+    and ebx, 1
+    mov ecx, eax
+.lu_draw_pixel:
+    test ebx, ebx
+    jz .lu_skip
     mov byte [edi], sil
+.lu_skip:
     inc edi
     dec ecx
     jnz .lu_col
     pop ecx
     add edi, SCREEN_WIDTH
     sub edi, 12
+    add esi, 2
     dec ecx
     jnz .lu_row
     
@@ -457,8 +506,18 @@ draw_chinese_lu:
     pop ebp
     ret
 
+section .data
+    ; 登 font data (12 rows x 2 bytes)
+    deng_font: db 0x0A, 0x40, 0x7A, 0xA0, 0x49, 0x40, 0x28, 0x80, 0x1F, 0xC0, 0x20, 0x30
+               db 0xDF, 0xA0, 0x10, 0x80, 0x1F, 0x80, 0x09, 0x00, 0x09, 0x20, 0xFF, 0xF0
+    
+    ; 录 font data (12 rows x 2 bytes)
+    lu_font: db 0x3F, 0x80, 0x00, 0x80, 0x3F, 0x80, 0x00, 0x80, 0xFF, 0xF0, 0x24, 0x40
+             db 0x16, 0x80, 0x0D, 0x00, 0x34, 0x80, 0xC4, 0x70, 0x14, 0x20, 0x08, 0x00
+
 section .bss
     g_mouse_x resd 1
     g_mouse_y resd 1
     prev_mouse_x resd 1
     prev_mouse_y resd 1
+    ecx2 resd 1
