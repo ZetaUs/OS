@@ -7,6 +7,8 @@ static vram_ptr const vram = reinterpret_cast<vram_ptr>(0xA0000);
 
 #include "logo_data.h"
 #include "load_data.h"
+#include "mouse_data.h"
+#include "HZK X Python/hzk_mini12.h"
 
 static inline void out8(uint16_t port, uint8_t value) {
     __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
@@ -24,6 +26,7 @@ static void fill(uint8_t color);
 static void rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint8_t color);
 static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t scale);
 static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8_t scale);
+static void chinese_char(uint16_t x, uint16_t y, uint8_t gb_high, uint8_t gb_low, uint8_t color);
 static void progress(uint8_t percent);
 static void login_screen();
 
@@ -61,13 +64,31 @@ static void login_screen() {
     fill(1);
     rectangle(80, 40, 160, 120, 8);
     rectangle(82, 42, 156, 116, 0);
-    text(130, 50, "LOGIN", 15, 2);
-    text(90, 80, "USER", 15, 1);
+    
+    // Draw "系统" title (系=0xCFB5, 统=0xB3B3)
+    chinese_char(124, 50, 0xCF, 0xB5, 15);
+    chinese_char(136, 50, 0xB3, 0xB3, 15);
+    
+    // Draw "用户" (用=0xD3C3, 户 not in font, use "人"=0xC8CB instead)
+    chinese_char(90, 80, 0xD3, 0xC3, 15);
+    chinese_char(102, 80, 0xC8, 0xCB, 15);
+    
     rectangle(120, 78, 100, 12, 7);
-    text(90, 100, "PASS", 15, 1);
+    
+    // Draw "口令" (口 not in font, use "文"=0xCEC4, 件=0xBCEE)
+    chinese_char(90, 100, 0xCE, 0xC4, 15);
+    chinese_char(102, 100, 0xBC, 0xEE, 15);
+    
     rectangle(120, 98, 100, 12, 7);
+    
+    // Draw "启动" button (启=0xC6F4, 动=0xB6AF)
     rectangle(110, 125, 100, 16, 14);
-    text(145, 128, "ENTER", 0, 1);
+    chinese_char(136, 128, 0xC6, 0xF4, 0);
+    chinese_char(148, 128, 0xB6, 0xAF, 0);
+    
+    // Draw mouse cursor
+    draw_mouse(200, 100);
+    
     for (;;) {
         __asm__ volatile("hlt");
     }
@@ -134,6 +155,27 @@ static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8
     while (*value != '\0') {
         character(x, y, *value++, color, scale);
         x += static_cast<uint16_t>(6u * scale);
+    }
+}
+
+static void chinese_char(uint16_t x, uint16_t y, uint8_t gb_high, uint8_t gb_low, uint8_t color) {
+    int idx = -1;
+    for (uint16_t i = 0; i < HZK12_MAP_COUNT; ++i) {
+        if (hzk12_mapping[i].gb_high == gb_high && hzk12_mapping[i].gb_low == gb_low) {
+            idx = hzk12_mapping[i].idx;
+            break;
+        }
+    }
+    if (idx < 0) return;
+    
+    const uint8_t* glyph_data = kernel_hzk12_mini + idx * HZK12_PER_GLYPH;
+    for (uint8_t row = 0; row < HZK12_HEIGHT; ++row) {
+        uint16_t bits = (static_cast<uint16_t>(glyph_data[row * 2]) << 8) | glyph_data[row * 2 + 1];
+        for (uint8_t col = 0; col < HZK12_WIDTH; ++col) {
+            if ((bits & (1u << (15u - col))) != 0) {
+                vram[(y + row) * 320u + x + col] = color;
+            }
+        }
     }
 }
 
