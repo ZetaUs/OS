@@ -70,18 +70,16 @@ static void login_screen() {
     chinese_char(148, 93, 0xB5C7, 0);
     chinese_char(160, 93, 0xC2BC, 0);
     
-    serial_write("Login screen: waiting for key press");
+    for (volatile uint32_t delay = 0; delay < 1000000; ++delay) {}
     
     for (;;) {
-        if ((in8(0x64) & 1) != 0) {
-            uint8_t scancode = in8(0x60);
-            serial_write("Key pressed");
-            if (scancode == 0x1C) {
-                serial_write("Enter detected");
-                break;
-            }
+        while ((in8(0x64) & 0x01) == 0) {
+            __asm__ volatile("hlt");
         }
-        __asm__ volatile("hlt");
+        uint8_t scancode = in8(0x60);
+        if (scancode == 0x1C) {
+            break;
+        }
     }
     
     desktop_screen();
