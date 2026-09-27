@@ -74,58 +74,18 @@ static void login_screen() {
     chinese_char(148, 93, 0xB5C7, 0);
     chinese_char(160, 93, 0xC2BC, 0);
     
-    mouse_init();
+    draw_mouse(160, 100, 15);
     
-    uint16_t mouse_x = 160;
-    uint16_t mouse_y = 100;
-    uint16_t prev_mouse_x = mouse_x;
-    uint16_t prev_mouse_y = mouse_y;
-    
-    draw_mouse_cursor(mouse_x, mouse_y, 15);
+    for (volatile uint32_t d = 0; d < 500000; d++) {}
     
     for (;;) {
-        uint8_t scancode;
-        int got_key = 0;
-        int got_click = 0;
-        
-        __asm__ volatile(
-            "inb $0x64, %%al\n"
-            "testb $0x01, %%al\n"
-            "jz 2f\n"
-            "inb $0x60, %%al\n"
-            "movb %%al, %0\n"
-            "movb $1, %1\n"
-            "jmp 3f\n"
-            "2:\n"
-            "movb $0, %1\n"
-            "3:\n"
-            : "=m"(scancode), "=m"(got_key)
-            :
-            : "al"
-        );
-        
-        if (got_key && scancode == 0x1C) {
-            break;
+        uint8_t status = in8(0x64);
+        if (status & 0x01) {
+            uint8_t sc = in8(0x60);
+            if (sc == 0x1C || sc == 0x9C) {
+                break;
+            }
         }
-        
-        mouse_update();
-        
-        if (mouse_x != prev_mouse_x || mouse_y != prev_mouse_y) {
-            draw_mouse_cursor(prev_mouse_x, prev_mouse_y, 1);
-            draw_mouse_cursor(mouse_x, mouse_y, 15);
-            prev_mouse_x = mouse_x;
-            prev_mouse_y = mouse_y;
-        }
-        
-        if (mouse_x >= 110 && mouse_x <= 210 && mouse_y >= 90 && mouse_y <= 106) {
-            got_click = 1;
-        }
-        
-        if (got_click) {
-            break;
-        }
-        
-        __asm__ volatile("hlt");
     }
     
     desktop_screen();
@@ -170,26 +130,15 @@ static uint16_t g_mouse_x = 160;
 static uint16_t g_mouse_y = 100;
 
 static void mouse_init() {
-    __asm__ volatile(
-        "mov $0xA8, %%al\n"
-        "outb %%al, $0x64\n"
-        "mov $0x20, %%al\n"
-        "outb %%al, $0x64\n"
-        "inb $0x60, %%al\n"
-        "orb $0x02, %%al\n"
-        "mov $0x60, %%al\n"
-        "outb %%al, $0x64\n"
-        "inb $0x60, %%al\n"
-        "mov %%al, %%bl\n"
-        "mov $0xD4, %%al\n"
-        "outb %%al, $0x64\n"
-        "mov $0xF4, %%al\n"
-        "outb %%al, $0x60\n"
-        "inb $0x60, %%al\n"
-        :
-        :
-        : "al", "bl"
-    );
+    out8(0x64, 0xA8);
+    out8(0x64, 0x20);
+    uint8_t status = in8(0x60);
+    status |= 0x02;
+    out8(0x64, 0x60);
+    out8(0x60, status);
+    out8(0x64, 0xD4);
+    out8(0x60, 0xF4);
+    in8(0x60);
 }
 
 static void mouse_update() {
