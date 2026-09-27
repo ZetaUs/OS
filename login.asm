@@ -12,11 +12,11 @@ COLOR_BUTTON equ 14
 COLOR_TEXT equ 0
 COLOR_MOUSE equ 15
 
-global ___login_screen
+global _login_screen
 
 section .text
 
-___login_screen:
+_login_screen:
     push ebp
     mov ebp, esp
     push ebx
@@ -24,6 +24,10 @@ ___login_screen:
     push edx
     push esi
     push edi
+    
+    ; Set VGA mode 13h (320x200, 256 colors)
+    mov ax, 0x13
+    int 0x10
     
     ; Clear screen with blue background
     mov edi, VGA_MEMORY
