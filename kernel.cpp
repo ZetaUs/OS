@@ -53,6 +53,11 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
 
     serial_write("Nova OS loading screen ready");
 
+    // Test: fill screen with red before calling login_screen
+    for (uint32_t i = 0; i < 320u * 200u; ++i) {
+        vram[i] = 4; // Red
+    }
+
     login_screen();
 
     for (;;) {
