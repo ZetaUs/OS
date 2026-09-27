@@ -70,13 +70,19 @@ static void login_screen() {
     chinese_char(148, 93, 0xB5C7, 0);
     chinese_char(160, 93, 0xC2BC, 0);
     
-    for (volatile uint32_t delay = 0; delay < 1000000; ++delay) {}
-    
+    uint8_t scancode;
     for (;;) {
-        while ((in8(0x64) & 0x01) == 0) {
-            __asm__ volatile("hlt");
-        }
-        uint8_t scancode = in8(0x60);
+        __asm__ volatile(
+            "1:\n"
+            "    inb $0x64, %%al\n"
+            "    testb $0x01, %%al\n"
+            "    jz 1b\n"
+            "    inb $0x60, %%al\n"
+            "    movb %%al, %0\n"
+            : "=m"(scancode)
+            :
+            : "al"
+        );
         if (scancode == 0x1C) {
             break;
         }
