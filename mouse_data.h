@@ -1,3 +1,8 @@
+#include <cstdint>
+
+// Forward declaration of vram from kernel.cpp
+extern volatile uint8_t* vram;
+
 // Auto-generated from mouse.png
 // Size: 13x16
 

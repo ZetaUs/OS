@@ -25,16 +25,11 @@ _login_screen:
     push esi
     push edi
     
-    ; Test: Fill screen with red to verify function is called
+    ; Clear screen with blue background
     mov edi, VGA_MEMORY
     mov ecx, 320 * 200
-    mov al, 4  ; Red color
+    mov al, COLOR_BG
     rep stosb
-    
-    ; Halt to see if red screen appears
-.test_halt:
-    hlt
-    jmp .test_halt
     
     ; Draw login box border (x=80, y=40, w=160, h=120, color=8)
     push COLOR_BORDER
@@ -42,15 +37,6 @@ _login_screen:
     push 160
     push 40
     push 80
-    call draw_rect
-    add esp, 20
-    
-    ; Draw inner box (x=82, y=42, w=152, h=116, color=0)
-    push COLOR_INNER
-    push 116
-    push 152
-    push 42
-    push 82
     call draw_rect
     add esp, 20
     
@@ -63,51 +49,36 @@ _login_screen:
     call draw_rect
     add esp, 20
     
-    ; Draw Chinese characters "登录"
-    ; 登: 12x12 at (148, 93), color=0
-    push COLOR_TEXT
-    push 93
-    push 148
-    call draw_chinese_deng
-    add esp, 12
-    
-    ; 录: 12x12 at (160, 93), color=0
-    push COLOR_TEXT
-    push 93
-    push 160
-    call draw_chinese_lu
-    add esp, 12
-    
     ; Initialize PS/2 mouse
     call mouse_init
     
-    ; Draw initial mouse cursor at (160, 100)
+    ; Draw initial mouse cursor
     push COLOR_MOUSE
-    push 100
-    push 160
+    push 100    ; Y
+    push 160    ; X
     call draw_mouse_cursor
     add esp, 12
     
-    ; Main loop: wait for Enter key or mouse click on button
+    ; Main loop: wait for Enter key or mouse click
 .wait_loop:
-    ; Check keyboard
+    ; Check keyboard input
     in al, 0x64
     test al, 1
     jz .check_mouse
     
     in al, 0x60
-    cmp al, 0x1C
+    cmp al, 0x1C    ; Enter key pressed
     je .login_exit
-    cmp al, 0x9C
+    cmp al, 0x9C    ; Enter key released
     je .login_exit
     
 .check_mouse:
-    ; Read mouse data
+    ; Update mouse position
     call mouse_update
     cmp eax, 0
     je .no_mouse_move
     
-    ; Redraw: clear old cursor, draw new cursor
+    ; Redraw mouse (clear old position, draw new position)
     push COLOR_BG
     push [prev_mouse_y]
     push [prev_mouse_x]
@@ -120,7 +91,8 @@ _login_screen:
     call draw_mouse_cursor
     add esp, 12
     
-    ; Check if mouse is on button (x:110-210, y:90-106)
+.no_mouse_move:
+    ; Check if mouse is on button area (x:110-210, y:90-106)
     mov eax, [g_mouse_x]
     cmp eax, 110
     jl .no_click
@@ -132,16 +104,15 @@ _login_screen:
     cmp eax, 106
     jg .no_click
     
-    ; Mouse is on button, check for left click
+    ; Check for left mouse button click
     in al, 0x64
     test al, 1
     jz .no_click
     in al, 0x60
-    test al, 1
+    test al, 1      ; Left button click bit
     jnz .login_exit
     
 .no_click:
-.no_mouse_move:
     ; HLT to reduce CPU usage
     hlt
     jmp .wait_loop
