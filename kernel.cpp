@@ -33,75 +33,28 @@ static void login_screen();
 static uint16_t g_mouse_x = 200;
 static uint16_t g_mouse_y = 100;
 
-static void mouse_wait(uint8_t type) {
-    uint32_t timeout = 100000;
-    if (type == 0) {
-        while (timeout--) {
-            if ((in8(0x64) & 0x01) == 0x01) return;
-        }
-    } else {
-        while (timeout--) {
-            if ((in8(0x64) & 0x02) == 0x00) return;
-        }
-    }
-}
-
-static void mouse_write(uint8_t data) {
-    mouse_wait(1);
-    out8(0x64, 0xD4);
-    mouse_wait(1);
-    out8(0x60, data);
-}
-
-static uint8_t mouse_read() {
-    mouse_wait(0);
-    return in8(0x60);
-}
-
-static void mouse_initialize() {
-    mouse_wait(1);
-    out8(0x64, 0xA8);
-    
-    mouse_wait(1);
-    out8(0x64, 0x20);
-    mouse_wait(0);
-    uint8_t status = in8(0x60);
-    status |= 0x02;
-    mouse_wait(1);
-    out8(0x64, 0x60);
-    mouse_wait(1);
-    out8(0x60, status);
-    
-    mouse_write(0xF6);
-    mouse_read();
-    mouse_write(0xF4);
-    mouse_read();
-}
-
 static void update_mouse() {
-    static uint8_t mouse_cycle = 0;
-    static int8_t mouse_buf[3];
+    static uint8_t cycle = 0;
+    static int8_t dx = 0;
+    static int8_t dy = 0;
     
-    while ((in8(0x64) & 0x01) != 0) {
+    if ((in8(0x64) & 0x01) != 0) {
         uint8_t data = in8(0x60);
         
-        if (mouse_cycle == 0) {
-            if (data & 0x08) {
-                mouse_buf[0] = data;
-                mouse_cycle = 1;
-            }
-        } else if (mouse_cycle == 1) {
-            mouse_buf[1] = (int8_t)data;
-            mouse_cycle = 2;
-        } else if (mouse_cycle == 2) {
-            mouse_buf[2] = (int8_t)data;
-            mouse_cycle = 0;
+        if (cycle == 0 && (data & 0x08)) {
+            cycle = 1;
+        } else if (cycle == 1) {
+            dx = (int8_t)data;
+            cycle = 2;
+        } else if (cycle == 2) {
+            dy = (int8_t)data;
+            cycle = 0;
             
-            g_mouse_x += mouse_buf[1];
-            g_mouse_y -= mouse_buf[2];
+            g_mouse_x += dx;
+            g_mouse_y -= dy;
             
-            if (g_mouse_x > 320 - mouse_width) g_mouse_x = 320 - mouse_width;
-            if (g_mouse_y > 200 - mouse_height) g_mouse_y = 200 - mouse_height;
+            if (g_mouse_x > 310) g_mouse_x = 310;
+            if (g_mouse_y > 190) g_mouse_y = 190;
         }
     }
 }
@@ -144,7 +97,6 @@ static void login_screen() {
     rectangle(110, 90, 100, 16, 14);
     text(145, 93, "ENTER", 0, 1);
     
-    mouse_initialize();
     draw_mouse(g_mouse_x, g_mouse_y);
     
     for (;;) {
