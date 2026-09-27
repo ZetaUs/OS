@@ -28,17 +28,25 @@ echo [2/5] Assembling stage2...
 "%NASM%" -f bin "%~dp0stage2.asm" -o "%OUT%\stage2.bin"
 if errorlevel 1 exit /b 1
 
-echo [3/5] Compiling the freestanding C++ kernel with Dev-C++...
+echo [3/5] Assembling login screen...
+"%NASM%" -f elf "%~dp0login.asm" -o "%OUT%\login.o"
+if errorlevel 1 exit /b 1
+
+echo [4/5] Assembling desktop screen...
+"%NASM%" -f elf "%~dp0desktop.asm" -o "%OUT%\desktop.o"
+if errorlevel 1 exit /b 1
+
+echo [5/5] Compiling the freestanding C++ kernel with Dev-C++...
 "%GXX%" -m32 -std=c++11 -Os -fno-toplevel-reorder -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -fno-stack-protector -fno-pic -fno-pie -fno-builtin -c "%~dp0kernel.cpp" -o "%OUT%\kernel.o"
 if errorlevel 1 exit /b 1
 
-echo [4/5] Linking and flattening the kernel...
-"%LD%" -mi386pe --image-base 0 --section-alignment 16 --file-alignment 16 --section-start .text=0x10000 -e _kernel_main -o "%OUT%\kernel.exe" "%OUT%\kernel.o"
+echo [6/5] Linking and flattening the kernel...
+"%LD%" -mi386pe --image-base 0 --section-alignment 16 --file-alignment 16 --section-start .text=0x10000 -e _kernel_main -o "%OUT%\kernel.exe" "%OUT%\kernel.o" "%OUT%\login.o" "%OUT%\desktop.o"
 if errorlevel 1 exit /b 1
 "%OBJCOPY%" --only-section=.text --only-section=.rdata --only-section=.data -O binary "%OUT%\kernel.exe" "%OUT%\kernel.bin"
 if errorlevel 1 exit /b 1
 
-echo [5/5] Building disk images...
+echo [7/5] Building disk images...
 
 :: Layout:
 ::   LBA 0: boot sector (512 bytes)
