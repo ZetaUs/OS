@@ -30,7 +30,7 @@ static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8
 static void progress(uint8_t percent);
 static void login_screen();
 
-static uint16_t g_mouse_x = 200;
+static uint16_t g_mouse_x = 160;
 static uint16_t g_mouse_y = 100;
 
 static void mouse_init() {
@@ -41,12 +41,16 @@ static void mouse_init() {
     out8(0x64, 0x60);
     out8(0x60, s);
     out8(0x64, 0xD4);
+    out8(0x60, 0xFF);
+    in8(0x60);
+    out8(0x64, 0xD4);
     out8(0x60, 0xF4);
     in8(0x60);
 }
 
 static void mouse_update() {
     static int phase = 0;
+    static uint8_t byte0 = 0;
     static int8_t mx = 0, my = 0;
     
     if ((in8(0x64) & 1) == 0) return;
@@ -54,17 +58,27 @@ static void mouse_update() {
     uint8_t b = in8(0x60);
     
     if (phase == 0) {
-        if (b & 8) phase = 1;
+        if (b & 8) {
+            byte0 = b;
+            phase = 1;
+        }
     } else if (phase == 1) {
         mx = (int8_t)b;
         phase = 2;
     } else if (phase == 2) {
         my = (int8_t)b;
         phase = 0;
-        g_mouse_x += mx;
-        g_mouse_y -= my;
-        if (g_mouse_x > 307) g_mouse_x = 307;
-        if (g_mouse_y > 184) g_mouse_y = 184;
+        
+        int new_x = (int)g_mouse_x + mx;
+        int new_y = (int)g_mouse_y - my;
+        
+        if (new_x < 0) new_x = 0;
+        if (new_x > 307) new_x = 307;
+        if (new_y < 0) new_y = 0;
+        if (new_y > 184) new_y = 184;
+        
+        g_mouse_x = (uint16_t)new_x;
+        g_mouse_y = (uint16_t)new_y;
     }
 }
 
@@ -107,11 +121,21 @@ static void login_screen() {
     text(145, 93, "ENTER", 0, 1);
     
     mouse_init();
-    draw_mouse(g_mouse_x, g_mouse_y);
+    draw_mouse(g_mouse_x, g_mouse_y, 15);
+    
+    uint16_t prev_x = g_mouse_x;
+    uint16_t prev_y = g_mouse_y;
     
     for (;;) {
         mouse_update();
-        draw_mouse(g_mouse_x, g_mouse_y);
+        
+        if (g_mouse_x != prev_x || g_mouse_y != prev_y) {
+            draw_mouse(prev_x, prev_y, 1);
+            draw_mouse(g_mouse_x, g_mouse_y, 15);
+            prev_x = g_mouse_x;
+            prev_y = g_mouse_y;
+        }
+        
         __asm__ volatile("hlt");
     }
 }
