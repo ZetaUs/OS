@@ -28,8 +28,8 @@ static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t
 static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8_t scale);
 static void progress(uint8_t percent);
 
-extern "C" void __login_screen();
-extern "C" void __desktop_screen();
+extern "C" void ___login_screen();
+extern "C" void ___desktop_screen();
 
 extern "C" __attribute__((noreturn)) void kernel_main() {
     serial_initialize();
@@ -53,7 +53,7 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
 
     serial_write("Nova OS loading screen ready");
 
-    __login_screen();
+    ___login_screen();
 
     for (;;) {
         __asm__ volatile("hlt");
