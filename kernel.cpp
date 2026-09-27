@@ -1,6 +1,8 @@
 typedef unsigned short uint16_t;
 typedef unsigned char uint8_t;
 typedef unsigned int uint32_t;
+typedef signed int int32_t;
+typedef signed char int8_t;
 
 typedef volatile uint8_t* vram_ptr;
 static vram_ptr const vram = reinterpret_cast<vram_ptr>(0xA0000);
