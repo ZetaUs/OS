@@ -25,15 +25,16 @@ _login_screen:
     push esi
     push edi
     
-    ; Set VGA mode 13h (320x200, 256 colors)
-    mov ax, 0x13
-    int 0x10
-    
-    ; Clear screen with blue background
+    ; Test: Fill screen with red to verify function is called
     mov edi, VGA_MEMORY
     mov ecx, 320 * 200
-    mov al, COLOR_BG
+    mov al, 4  ; Red color
     rep stosb
+    
+    ; Halt to see if red screen appears
+.test_halt:
+    hlt
+    jmp .test_halt
     
     ; Draw login box border (x=80, y=40, w=160, h=120, color=8)
     push COLOR_BORDER
