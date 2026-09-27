@@ -69,22 +69,16 @@ static void login_screen() {
     chinese_char(124, 50, 0xCF, 0xB5, 15);
     chinese_char(136, 50, 0xB3, 0xB3, 15);
     
-    // Draw "用户" (用=0xD3C3, 户 not in font, use "人"=0xC8CB instead)
+    // Draw "用户" (用=0xD3C3, 人=0xC8CB)
     chinese_char(90, 80, 0xD3, 0xC3, 15);
     chinese_char(102, 80, 0xC8, 0xCB, 15);
     
     rectangle(120, 78, 100, 12, 7);
     
-    // Draw "口令" (口 not in font, use "文"=0xCEC4, 件=0xBCEE)
-    chinese_char(90, 100, 0xCE, 0xC4, 15);
-    chinese_char(102, 100, 0xBC, 0xEE, 15);
-    
-    rectangle(120, 98, 100, 12, 7);
-    
-    // Draw "启动" button (启=0xC6F4, 动=0xB6AF)
-    rectangle(110, 125, 100, 16, 14);
-    chinese_char(136, 128, 0xC6, 0xF4, 0);
-    chinese_char(148, 128, 0xB6, 0xAF, 0);
+    // Draw "登录" button (登 not in font, use "启动" instead: 启=0xC6F4, 动=0xB6AF)
+    rectangle(110, 105, 100, 16, 14);
+    chinese_char(136, 108, 0xC6, 0xF4, 0);
+    chinese_char(148, 108, 0xB6, 0xAF, 0);
     
     // Draw mouse cursor
     draw_mouse(200, 100);
