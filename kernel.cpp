@@ -32,6 +32,82 @@ static void chinese_char(uint16_t x, uint16_t y, uint8_t gb_high, uint8_t gb_low
 static void progress(uint8_t percent);
 static void login_screen();
 
+static uint16_t g_mouse_x = 200;
+static uint16_t g_mouse_y = 100;
+
+static void mouse_wait(uint8_t type) {
+    uint32_t timeout = 100000;
+    if (type == 0) {
+        while (timeout--) {
+            if ((in8(0x64) & 0x01) == 0x01) return;
+        }
+    } else {
+        while (timeout--) {
+            if ((in8(0x64) & 0x02) == 0x00) return;
+        }
+    }
+}
+
+static void mouse_write(uint8_t data) {
+    mouse_wait(1);
+    out8(0x64, 0xD4);
+    mouse_wait(1);
+    out8(0x60, data);
+}
+
+static uint8_t mouse_read() {
+    mouse_wait(0);
+    return in8(0x60);
+}
+
+static void mouse_initialize() {
+    mouse_wait(1);
+    out8(0x64, 0xA8);
+    
+    mouse_wait(1);
+    out8(0x64, 0x20);
+    mouse_wait(0);
+    uint8_t status = in8(0x60);
+    status |= 0x02;
+    mouse_wait(1);
+    out8(0x64, 0x60);
+    mouse_wait(1);
+    out8(0x60, status);
+    
+    mouse_write(0xF6);
+    mouse_read();
+    mouse_write(0xF4);
+    mouse_read();
+}
+
+static void update_mouse() {
+    uint8_t mouse_cycle = 0;
+    int8_t mouse_data[3];
+    
+    while ((in8(0x64) & 0x01) != 0) {
+        uint8_t data = in8(0x60);
+        
+        if (mouse_cycle == 0) {
+            if (data & 0x08) {
+                mouse_data[0] = data;
+                mouse_cycle = 1;
+            }
+        } else if (mouse_cycle == 1) {
+            mouse_data[1] = (int8_t)data;
+            mouse_cycle = 2;
+        } else if (mouse_cycle == 2) {
+            mouse_data[2] = (int8_t)data;
+            mouse_cycle = 0;
+            
+            g_mouse_x += mouse_data[1];
+            g_mouse_y -= mouse_data[2];
+            
+            if (g_mouse_x > 320 - mouse_width) g_mouse_x = 320 - mouse_width;
+            if (g_mouse_y > 200 - mouse_height) g_mouse_y = 200 - mouse_height;
+        }
+    }
+}
+
 extern "C" __attribute__((noreturn)) void kernel_main() {
     serial_initialize();
     serial_write("Nova OS: C++ kernel started");
@@ -67,14 +143,16 @@ static void login_screen() {
     rectangle(80, 40, 160, 120, 8);
     rectangle(82, 42, 156, 116, 0);
     
-    chinese_char(124, 50, 0xB5, 0xC7, 15);
-    chinese_char(136, 50, 0xC2, 0xBC, 15);
-    
     rectangle(110, 90, 100, 16, 14);
     chinese_char(148, 93, 0xB5, 0xC7, 0);
     chinese_char(160, 93, 0xC2, 0xBC, 0);
     
+    mouse_initialize();
+    draw_mouse(g_mouse_x, g_mouse_y);
+    
     for (;;) {
+        update_mouse();
+        draw_mouse(g_mouse_x, g_mouse_y);
         __asm__ volatile("hlt");
     }
 }
