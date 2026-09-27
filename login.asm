@@ -12,9 +12,6 @@ COLOR_BUTTON equ 14
 COLOR_TEXT equ 0
 COLOR_MOUSE equ 15
 
-; Mouse data (13x16 arrow cursor, value 14 = visible)
-%include "mouse_data.inc"
-
 global _login_screen
 
 section .text
