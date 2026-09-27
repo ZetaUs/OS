@@ -12,11 +12,11 @@ COLOR_BUTTON equ 14
 COLOR_TEXT equ 0
 COLOR_MOUSE equ 15
 
-global _login_screen
+global __login_screen
 
 section .text
 
-_login_screen:
+__login_screen:
     push ebp
     mov ebp, esp
     push ebx
@@ -58,7 +58,7 @@ _login_screen:
     call draw_rect
     add esp, 20
     
-    ; Draw Chinese characters "登录" (simplified: draw as dots for now)
+    ; Draw Chinese characters "登录"
     ; 登: 12x12 at (148, 93), color=0
     push COLOR_TEXT
     push 93
@@ -165,27 +165,27 @@ draw_rect:
     mov ebx, [ebp+12]     ; y
     mov ecx, [ebp+16]     ; width
     mov edx, [ebp+20]     ; height
-    mov esi, [ebp+24]     ; color
+    movzx esi, byte [ebp+24]  ; color
     
     mov edi, VGA_MEMORY
     imul ebx, SCREEN_WIDTH
     add edi, ebx
     add edi, eax
     
-    movzx eax, byte [ebp+24]  ; color
-    
-.row_loop:
+.draw_row:
     push ecx
-.col_loop:
+    mov ecx, [ebp+16]
+    mov eax, esi
+.draw_col:
     mov byte [edi], al
     inc edi
     dec ecx
-    jnz .col_loop
+    jnz .draw_col
     pop ecx
     add edi, SCREEN_WIDTH
     sub edi, [ebp+16]
     dec edx
-    jnz .row_loop
+    jnz .draw_row
     
     pop edi
     pop esi
@@ -314,12 +314,11 @@ draw_mouse_cursor:
     push ebx
     push ecx
     push edx
-    push esi
     push edi
     
     mov eax, [ebp+8]      ; x
     mov ebx, [ebp+12]     ; y
-    movzx esi, byte [ebp+16]  ; color
+    movzx edx, byte [ebp+16]  ; color (in dl)
     
     mov edi, VGA_MEMORY
     imul ebx, SCREEN_WIDTH
@@ -332,33 +331,33 @@ draw_mouse_cursor:
     
     ; Draw mouse (13x16)
     mov ecx, 16           ; height
-    xor edx, edx          ; row index
+    xor ebx, ebx          ; row index
     
 .row_loop_mouse:
     push ecx
     mov ecx, 13           ; width
-    xor ebx, ebx          ; col index
+    xor esi, esi          ; col index
     
 .col_loop_mouse:
-    mov eax, edx
+    mov eax, ebx
     imul eax, 13
-    add eax, ebx
+    add eax, esi
     movzx eax, byte [mouse_data + eax]
     cmp eax, 14
     jne .skip_pixel
     
-    mov byte [edi], sil
+    mov byte [edi], dl
     
 .skip_pixel:
     inc edi
-    inc ebx
+    inc esi
     dec ecx
     jnz .col_loop_mouse
     
     pop ecx
     add edi, SCREEN_WIDTH
     sub edi, 13
-    inc edx
+    inc ebx
     dec ecx
     jnz .row_loop_mouse
     
@@ -377,63 +376,32 @@ draw_chinese_deng:
     push ebx
     push ecx
     push edx
-    push esi
     push edi
     
     mov eax, [ebp+8]      ; x
     mov ebx, [ebp+12]     ; y
-    mov esi, [ebp+16]     ; color
+    movzx edx, byte [ebp+16]  ; color (in dl)
     
     mov edi, VGA_MEMORY
     imul ebx, SCREEN_WIDTH
     add edi, ebx
     add edi, eax
     
-    ; 登 bitmap data (12 rows, 2 bytes per row)
-    mov esi, deng_font
-    mov ecx, 12
-.deng_row:
-    push ecx
-    mov al, [esi]
-    mov ah, [esi+1]
-    mov ecx, 12
-    xor edx, edx
-.deng_col:
-    push ecx
-    cmp edx, 8
-    jl .deng_low
-    ; High byte
-    mov cl, ah
-    sub edx, 8
-    shr cl, 7
-    and cl, 1
-    add edx, 8
-    jmp .deng_draw
-.deng_low:
-    ; Low byte
-    mov cl, al
-    shr cl, 7
-    and cl, 1
-.deng_draw:
-    shl al, 1
-    test cl, cl
+    ; 登 bitmap data (12x12 = 144 bytes, 0 or 1)
+    mov esi, deng_expanded
+    mov ecx, 144
+.deng_loop:
+    movzx eax, byte [esi]
+    test eax, eax
     jz .deng_skip
-    mov byte [edi], sil
+    mov byte [edi], dl
 .deng_skip:
     inc edi
-    pop ecx
-    inc edx
+    inc esi
     dec ecx
-    jnz .deng_col
-    pop ecx
-    add edi, SCREEN_WIDTH
-    sub edi, 12
-    add esi, 2
-    dec ecx
-    jnz .deng_row
+    jnz .deng_loop
     
     pop edi
-    pop esi
     pop edx
     pop ecx
     pop ebx
@@ -447,63 +415,32 @@ draw_chinese_lu:
     push ebx
     push ecx
     push edx
-    push esi
     push edi
     
     mov eax, [ebp+8]      ; x
     mov ebx, [ebp+12]     ; y
-    mov esi, [ebp+16]     ; color
+    movzx edx, byte [ebp+16]  ; color (in dl)
     
     mov edi, VGA_MEMORY
     imul ebx, SCREEN_WIDTH
     add edi, ebx
     add edi, eax
     
-    ; 录 bitmap data (12 rows, 2 bytes per row)
-    mov esi, lu_font
-    mov ecx, 12
-.lu_row:
-    push ecx
-    mov al, [esi]
-    mov ah, [esi+1]
-    mov ecx, 12
-    xor edx, edx
-.lu_col:
-    push ecx
-    cmp edx, 8
-    jl .lu_low
-    ; High byte
-    mov cl, ah
-    sub edx, 8
-    shr cl, 7
-    and cl, 1
-    add edx, 8
-    jmp .lu_draw
-.lu_low:
-    ; Low byte
-    mov cl, al
-    shr cl, 7
-    and cl, 1
-.lu_draw:
-    shl al, 1
-    test cl, cl
+    ; 录 bitmap data (12x12 = 144 bytes, 0 or 1)
+    mov esi, lu_expanded
+    mov ecx, 144
+.lu_loop:
+    movzx eax, byte [esi]
+    test eax, eax
     jz .lu_skip
-    mov byte [edi], sil
+    mov byte [edi], dl
 .lu_skip:
     inc edi
-    pop ecx
-    inc edx
+    inc esi
     dec ecx
-    jnz .lu_col
-    pop ecx
-    add edi, SCREEN_WIDTH
-    sub edi, 12
-    add esi, 2
-    dec ecx
-    jnz .lu_row
+    jnz .lu_loop
     
     pop edi
-    pop esi
     pop edx
     pop ecx
     pop ebx
@@ -511,13 +448,36 @@ draw_chinese_lu:
     ret
 
 section .data
-    ; 登 font data (12 rows x 2 bytes)
-    deng_font: db 0x0A, 0x40, 0x7A, 0xA0, 0x49, 0x40, 0x28, 0x80, 0x1F, 0xC0, 0x20, 0x30
-               db 0xDF, 0xA0, 0x10, 0x80, 0x1F, 0x80, 0x09, 0x00, 0x09, 0x20, 0xFF, 0xF0
+    ; Include mouse cursor data
+    %include "mouse_data.inc"
     
-    ; 录 font data (12 rows x 2 bytes)
-    lu_font: db 0x3F, 0x80, 0x00, 0x80, 0x3F, 0x80, 0x00, 0x80, 0xFF, 0xF0, 0x24, 0x40
-             db 0x16, 0x80, 0x0D, 0x00, 0x34, 0x80, 0xC4, 0x70, 0x14, 0x20, 0x08, 0x00
+    ; 登 expanded bitmap (12x12 = 144 bytes, 0 or 1)
+    deng_expanded: db 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0
+                   db 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0
+                   db 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0
+                   db 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0
+                   db 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0
+                   db 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0
+                   db 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0
+                   db 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0
+                   db 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0
+                   db 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0
+                   db 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1
+                   db 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    
+    ; 录 expanded bitmap (12x12 = 144 bytes, 0 or 1)
+    lu_expanded: db 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0
+                 db 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0
+                 db 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0
+                 db 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0
+                 db 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+                 db 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0
+                 db 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0
+                 db 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0
+                 db 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0
+                 db 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1
+                 db 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0
+                 db 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0
 
 section .bss
     g_mouse_x resd 1

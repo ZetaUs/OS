@@ -1,5 +1,6 @@
 ; Mouse cursor data (13x16 arrow)
 ; Value 14 = visible pixel, 0 = transparent
+mouse_data:
 db 14, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 db 14, 14, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 db 14, 14, 14, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0
