@@ -25,10 +25,19 @@ _login_screen:
     push esi
     push edi
     
-    ; Clear screen with blue background
+    ; Initialize keyboard controller (simple version)
+    ; Enable keyboard interface
+    mov al, 0xAE
+    out 0x64, al
+    
+    ; Enable keyboard scanning
+    mov al, 0xF4
+    out 0x60, al
+    
+    ; Clear screen with RED background (test - color 4 = red)
     mov edi, VGA_MEMORY
     mov ecx, 320 * 200
-    mov al, COLOR_BG
+    mov al, 4  ; RED instead of blue
     rep stosb
     
     ; Draw login box border (x=80, y=40, w=160, h=120, color=8)
@@ -64,30 +73,14 @@ _login_screen:
     call draw_chinese_lu
     add esp, 12
     
-    ; Main loop: wait for Enter key
-.wait_loop:
-    ; Update mouse position
-    call mouse_update
+    ; Simple delay loop
+    mov ecx, 1000000
+.delay_loop:
+    dec ecx
+    jnz .delay_loop
     
-    ; Check keyboard status
-    in al, 0x64
-    test al, 1
-    jz .redraw_mouse
-    
-    ; Read scancode
-    in al, 0x60
-    
-    ; Check for Enter key (0x1C = make, 0x9C = break)
-    cmp al, 0x1C
-    je .login_exit
-    cmp al, 0x9C
-    je .login_exit
-    
-.redraw_mouse:
-    ; Redraw mouse cursor
-    call draw_mouse_cursor
-    
-    jmp .wait_loop
+    ; Exit immediately (for testing)
+    jmp .login_exit
 
 .login_exit:
     pop edi
@@ -96,6 +89,43 @@ _login_screen:
     pop ecx
     pop ebx
     pop ebp
+    ret
+
+; Function: init_keyboard
+; Initialize keyboard controller
+init_keyboard:
+    push eax
+    push ecx
+    
+    ; Wait for keyboard controller input buffer empty
+.wait_kbc1:
+    in al, 0x64
+    test al, 2
+    jnz .wait_kbc1
+    
+    ; Send command to enable keyboard (0xAE = enable keyboard interface)
+    mov al, 0xAE
+    out 0x64, al
+    
+    ; Wait for keyboard controller input buffer empty
+.wait_kbc2:
+    in al, 0x64
+    test al, 2
+    jnz .wait_kbc2
+    
+    ; Send command to enable keyboard scanning (0xF4)
+    mov al, 0xF4
+    out 0x60, al
+    
+    ; Wait for ACK (0xFA)
+.wait_ack:
+    in al, 0x64
+    test al, 1
+    jz .wait_ack
+    in al, 0x60
+    
+    pop ecx
+    pop eax
     ret
 
 ; Function: draw_rect

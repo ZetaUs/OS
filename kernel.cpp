@@ -32,27 +32,7 @@ extern "C" void login_screen();
 extern "C" void desktop_screen();
 
 extern "C" __attribute__((noreturn)) void kernel_main() {
-    serial_initialize();
-    serial_write("Nova OS: C++ kernel started");
-    serial_write("Dev-C++ MinGW, 32-bit protected mode");
-
-    fill(1);
-    rectangle(24, 20, 272, 160, 8);
-    rectangle(28, 24, 264, 152, 1);
-    
-    draw_logo((320 - logo_width) / 2, 40);
-    
-    rectangle(58, 145, 204, 12, 8);
-    rectangle(62, 149, 196, 4, 3);
-
-    for (uint8_t percent = 0; percent <= 100; percent += 10) {
-        progress(percent);
-        for (volatile uint32_t delay = 0; delay < 5000000; ++delay) {
-        }
-    }
-
-    serial_write("Nova OS loading screen ready");
-
+    // Skip loading screen - go directly to login
     login_screen();
     desktop_screen();
 
