@@ -49,41 +49,41 @@ _login_screen:
     call draw_rect
     add esp, 20
     
-    ; Draw "登" character at (148, 93) - 12x12 pixels, black color
-    mov edi, VGA_MEMORY
-    mov eax, 93
-    imul eax, SCREEN_WIDTH
-    add eax, 148
-    add edi, eax
-    mov esi, .deng_bits
-    mov ecx, 144
-.draw_deng:
-    lodsb
-    test al, al
-    jz .skip_deng
-    mov byte [edi], 0  ; Black
-.skip_deng:
-    inc edi
-    dec ecx
-    jnz .draw_deng
+    ; Draw "Login" text on button (black color)
+    ; L at (130, 94)
+    push 0
+    push 94
+    push 130
+    call draw_char_L
+    add esp, 12
     
-    ; Draw "录" character at (160, 93) - 12x12 pixels, black color
-    mov edi, VGA_MEMORY
-    mov eax, 93
-    imul eax, SCREEN_WIDTH
-    add eax, 160
-    add edi, eax
-    mov esi, .lu_bits
-    mov ecx, 144
-.draw_lu:
-    lodsb
-    test al, al
-    jz .skip_lu
-    mov byte [edi], 0  ; Black
-.skip_lu:
-    inc edi
-    dec ecx
-    jnz .draw_lu
+    ; o at (138, 94)
+    push 0
+    push 94
+    push 138
+    call draw_char_o
+    add esp, 12
+    
+    ; g at (146, 94)
+    push 0
+    push 94
+    push 146
+    call draw_char_g
+    add esp, 12
+    
+    ; i at (154, 94)
+    push 0
+    push 94
+    push 154
+    call draw_char_i
+    add esp, 12
+    
+    ; n at (158, 94)
+    push 0
+    push 94
+    push 158
+    call draw_char_n
+    add esp, 12
     
     ; Main loop: wait for Enter key
 .wait_loop:
@@ -100,7 +100,233 @@ _login_screen:
     
     jmp .wait_loop
 
-; Character bitmap data (from hzk_mini12.h)
+; Simple 5x7 character drawing functions
+; L
+draw_char_L:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    push edx
+    push edi
+    
+    mov eax, [ebp+8]      ; x
+    mov ebx, [ebp+12]     ; y
+    movzx edx, byte [ebp+16]  ; color
+    
+    mov edi, VGA_MEMORY
+    imul ebx, SCREEN_WIDTH
+    add edi, ebx
+    add edi, eax
+    
+    mov esi, .L_bits
+    mov ebx, 7
+.L_row:
+    mov ecx, 5
+.L_col:
+    lodsb
+    test al, al
+    jz .L_skip
+    mov byte [edi], dl
+.L_skip:
+    inc edi
+    dec ecx
+    jnz .L_col
+    add edi, SCREEN_WIDTH - 5
+    dec ebx
+    jnz .L_row
+    
+    pop edi
+    pop edx
+    pop ecx
+    pop ebx
+    pop ebp
+    ret
+.L_bits:
+    db 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0
+    db 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1
+
+; o
+draw_char_o:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    push edx
+    push edi
+    
+    mov eax, [ebp+8]
+    mov ebx, [ebp+12]
+    movzx edx, byte [ebp+16]
+    
+    mov edi, VGA_MEMORY
+    imul ebx, SCREEN_WIDTH
+    add edi, ebx
+    add edi, eax
+    
+    mov esi, .o_bits
+    mov ebx, 7
+.o_row:
+    mov ecx, 5
+.o_col:
+    lodsb
+    test al, al
+    jz .o_skip
+    mov byte [edi], dl
+.o_skip:
+    inc edi
+    dec ecx
+    jnz .o_col
+    add edi, SCREEN_WIDTH - 5
+    dec ebx
+    jnz .o_row
+    
+    pop edi
+    pop edx
+    pop ecx
+    pop ebx
+    pop ebp
+    ret
+.o_bits:
+    db 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0
+    db 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0
+
+; g
+draw_char_g:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    push edx
+    push edi
+    
+    mov eax, [ebp+8]
+    mov ebx, [ebp+12]
+    movzx edx, byte [ebp+16]
+    
+    mov edi, VGA_MEMORY
+    imul ebx, SCREEN_WIDTH
+    add edi, ebx
+    add edi, eax
+    
+    mov esi, .g_bits
+    mov ebx, 7
+.g_row:
+    mov ecx, 5
+.g_col:
+    lodsb
+    test al, al
+    jz .g_skip
+    mov byte [edi], dl
+.g_skip:
+    inc edi
+    dec ecx
+    jnz .g_col
+    add edi, SCREEN_WIDTH - 5
+    dec ebx
+    jnz .g_row
+    
+    pop edi
+    pop edx
+    pop ecx
+    pop ebx
+    pop ebp
+    ret
+.g_bits:
+    db 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0
+    db 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0
+
+; i
+draw_char_i:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    push edx
+    push edi
+    
+    mov eax, [ebp+8]
+    mov ebx, [ebp+12]
+    movzx edx, byte [ebp+16]
+    
+    mov edi, VGA_MEMORY
+    imul ebx, SCREEN_WIDTH
+    add edi, ebx
+    add edi, eax
+    
+    mov esi, .i_bits
+    mov ebx, 7
+.i_row:
+    mov ecx, 3
+.i_col:
+    lodsb
+    test al, al
+    jz .i_skip
+    mov byte [edi], dl
+.i_skip:
+    inc edi
+    dec ecx
+    jnz .i_col
+    add edi, SCREEN_WIDTH - 3
+    dec ebx
+    jnz .i_row
+    
+    pop edi
+    pop edx
+    pop ecx
+    pop ebx
+    pop ebp
+    ret
+.i_bits:
+    db 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0
+    db 1, 0, 0, 1, 0, 0, 1, 0, 0
+
+; n
+draw_char_n:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    push edx
+    push edi
+    
+    mov eax, [ebp+8]
+    mov ebx, [ebp+12]
+    movzx edx, byte [ebp+16]
+    
+    mov edi, VGA_MEMORY
+    imul ebx, SCREEN_WIDTH
+    add edi, ebx
+    add edi, eax
+    
+    mov esi, .n_bits
+    mov ebx, 7
+.n_row:
+    mov ecx, 5
+.n_col:
+    lodsb
+    test al, al
+    jz .n_skip
+    mov byte [edi], dl
+.n_skip:
+    inc edi
+    dec ecx
+    jnz .n_col
+    add edi, SCREEN_WIDTH - 5
+    dec ebx
+    jnz .n_row
+    
+    pop edi
+    pop edx
+    pop ecx
+    pop ebx
+    pop ebp
+    ret
+.n_bits:
+    db 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0
+    db 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0
+
+; Character bitmap data (from expand_chars.py)
 .deng_bits:
     db 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0
     db 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0
@@ -377,8 +603,10 @@ draw_chinese_deng:
     
     ; 登 bitmap data (12x12 = 144 bytes, 0 or 1)
     mov esi, deng_expanded
-    mov ecx, 144
-.deng_loop:
+    mov ebx, 12  ; row counter
+.deng_row:
+    mov ecx, 12  ; col counter
+.deng_col:
     movzx eax, byte [esi]
     test eax, eax
     jz .deng_skip
@@ -387,7 +615,10 @@ draw_chinese_deng:
     inc edi
     inc esi
     dec ecx
-    jnz .deng_loop
+    jnz .deng_col
+    add edi, SCREEN_WIDTH - 12  ; move to next row
+    dec ebx
+    jnz .deng_row
     
     pop edi
     pop edx
@@ -416,8 +647,10 @@ draw_chinese_lu:
     
     ; 录 bitmap data (12x12 = 144 bytes, 0 or 1)
     mov esi, lu_expanded
-    mov ecx, 144
-.lu_loop:
+    mov ebx, 12  ; row counter
+.lu_row:
+    mov ecx, 12  ; col counter
+.lu_col:
     movzx eax, byte [esi]
     test eax, eax
     jz .lu_skip
@@ -426,7 +659,10 @@ draw_chinese_lu:
     inc edi
     inc esi
     dec ecx
-    jnz .lu_loop
+    jnz .lu_col
+    add edi, SCREEN_WIDTH - 12  ; move to next row
+    dec ebx
+    jnz .lu_row
     
     pop edi
     pop edx
