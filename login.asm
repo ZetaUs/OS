@@ -660,6 +660,22 @@ section .data
     ; Include mouse cursor data
     %include "mouse_data.inc"
     
+    ; English character bitmaps (5x7)
+    char_L_bits: db 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0
+                 db 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1
+    
+    char_o_bits: db 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0
+                 db 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0
+    
+    char_g_bits: db 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0
+                 db 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0
+    
+    char_i_bits: db 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0
+                 db 1, 0, 0, 1, 0, 0, 1, 0, 0
+    
+    char_n_bits: db 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0
+                 db 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0
+    
     ; 登 expanded bitmap (12x12 = 144 bytes, 0 or 1)
     deng_expanded: db 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0
                    db 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0
