@@ -119,7 +119,7 @@ draw_char_L:
     add edi, ebx
     add edi, eax
     
-    mov esi, .L_bits
+    mov esi, char_L_bits
     mov ebx, 7
 .L_row:
     mov ecx, 5
@@ -142,9 +142,6 @@ draw_char_L:
     pop ebx
     pop ebp
     ret
-.L_bits:
-    db 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0
-    db 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1
 
 ; o
 draw_char_o:
@@ -164,7 +161,7 @@ draw_char_o:
     add edi, ebx
     add edi, eax
     
-    mov esi, .o_bits
+    mov esi, char_o_bits
     mov ebx, 7
 .o_row:
     mov ecx, 5
@@ -187,9 +184,6 @@ draw_char_o:
     pop ebx
     pop ebp
     ret
-.o_bits:
-    db 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0
-    db 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0
 
 ; g
 draw_char_g:
@@ -209,7 +203,7 @@ draw_char_g:
     add edi, ebx
     add edi, eax
     
-    mov esi, .g_bits
+    mov esi, char_g_bits
     mov ebx, 7
 .g_row:
     mov ecx, 5
@@ -232,9 +226,6 @@ draw_char_g:
     pop ebx
     pop ebp
     ret
-.g_bits:
-    db 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0
-    db 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0
 
 ; i
 draw_char_i:
@@ -254,7 +245,7 @@ draw_char_i:
     add edi, ebx
     add edi, eax
     
-    mov esi, .i_bits
+    mov esi, char_i_bits
     mov ebx, 7
 .i_row:
     mov ecx, 3
@@ -277,9 +268,6 @@ draw_char_i:
     pop ebx
     pop ebp
     ret
-.i_bits:
-    db 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0
-    db 1, 0, 0, 1, 0, 0, 1, 0, 0
 
 ; n
 draw_char_n:
@@ -299,7 +287,7 @@ draw_char_n:
     add edi, ebx
     add edi, eax
     
-    mov esi, .n_bits
+    mov esi, char_n_bits
     mov ebx, 7
 .n_row:
     mov ecx, 5
@@ -322,9 +310,6 @@ draw_char_n:
     pop ebx
     pop ebp
     ret
-.n_bits:
-    db 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0
-    db 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0
 
 ; Character bitmap data (from expand_chars.py)
 .deng_bits:
