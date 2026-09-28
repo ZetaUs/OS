@@ -69,15 +69,18 @@ _login_screen:
     ; Update mouse position
     call mouse_update
     
-    ; Check keyboard input
+    ; Check keyboard status
     in al, 0x64
     test al, 1
     jz .redraw_mouse
     
+    ; Read scancode
     in al, 0x60
-    cmp al, 0x1C    ; Enter key pressed
+    
+    ; Check for Enter key (0x1C = make, 0x9C = break)
+    cmp al, 0x1C
     je .login_exit
-    cmp al, 0x9C    ; Enter key released
+    cmp al, 0x9C
     je .login_exit
     
 .redraw_mouse:
