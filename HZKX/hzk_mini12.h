@@ -1,3 +1,4 @@
+#include <cstdint>
 #ifndef __HZK_MINI12_H
 #define __HZK_MINI12_H
 
