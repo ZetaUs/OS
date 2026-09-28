@@ -66,10 +66,13 @@ _login_screen:
     
     ; Main loop: wait for Enter key
 .wait_loop:
+    ; Update mouse position
+    call mouse_update
+    
     ; Check keyboard input
     in al, 0x64
     test al, 1
-    jz .wait_loop
+    jz .redraw_mouse
     
     in al, 0x60
     cmp al, 0x1C    ; Enter key pressed
@@ -77,222 +80,15 @@ _login_screen:
     cmp al, 0x9C    ; Enter key released
     je .login_exit
     
+.redraw_mouse:
+    ; Redraw mouse cursor
+    call draw_mouse_cursor
+    
     jmp .wait_loop
 
 .login_exit:
     pop edi
     pop esi
-    pop edx
-    pop ecx
-    pop ebx
-    pop ebp
-    ret
-
-; Simple 5x7 character drawing functions
-; L
-draw_char_L:
-    push ebp
-    mov ebp, esp
-    push ebx
-    push ecx
-    push edx
-    push edi
-    
-    mov eax, [ebp+8]      ; x
-    mov ebx, [ebp+12]     ; y
-    movzx edx, byte [ebp+16]  ; color
-    
-    mov edi, VGA_MEMORY
-    imul ebx, SCREEN_WIDTH
-    add edi, ebx
-    add edi, eax
-    
-    mov esi, char_L_bits
-    mov ebx, 7
-.L_row:
-    mov ecx, 5
-.L_col:
-    lodsb
-    test al, al
-    jz .L_skip
-    mov byte [edi], dl
-.L_skip:
-    inc edi
-    dec ecx
-    jnz .L_col
-    add edi, SCREEN_WIDTH - 5
-    dec ebx
-    jnz .L_row
-    
-    pop edi
-    pop edx
-    pop ecx
-    pop ebx
-    pop ebp
-    ret
-
-; o
-draw_char_o:
-    push ebp
-    mov ebp, esp
-    push ebx
-    push ecx
-    push edx
-    push edi
-    
-    mov eax, [ebp+8]
-    mov ebx, [ebp+12]
-    movzx edx, byte [ebp+16]
-    
-    mov edi, VGA_MEMORY
-    imul ebx, SCREEN_WIDTH
-    add edi, ebx
-    add edi, eax
-    
-    mov esi, char_o_bits
-    mov ebx, 7
-.o_row:
-    mov ecx, 5
-.o_col:
-    lodsb
-    test al, al
-    jz .o_skip
-    mov byte [edi], dl
-.o_skip:
-    inc edi
-    dec ecx
-    jnz .o_col
-    add edi, SCREEN_WIDTH - 5
-    dec ebx
-    jnz .o_row
-    
-    pop edi
-    pop edx
-    pop ecx
-    pop ebx
-    pop ebp
-    ret
-
-; g
-draw_char_g:
-    push ebp
-    mov ebp, esp
-    push ebx
-    push ecx
-    push edx
-    push edi
-    
-    mov eax, [ebp+8]
-    mov ebx, [ebp+12]
-    movzx edx, byte [ebp+16]
-    
-    mov edi, VGA_MEMORY
-    imul ebx, SCREEN_WIDTH
-    add edi, ebx
-    add edi, eax
-    
-    mov esi, char_g_bits
-    mov ebx, 7
-.g_row:
-    mov ecx, 5
-.g_col:
-    lodsb
-    test al, al
-    jz .g_skip
-    mov byte [edi], dl
-.g_skip:
-    inc edi
-    dec ecx
-    jnz .g_col
-    add edi, SCREEN_WIDTH - 5
-    dec ebx
-    jnz .g_row
-    
-    pop edi
-    pop edx
-    pop ecx
-    pop ebx
-    pop ebp
-    ret
-
-; i
-draw_char_i:
-    push ebp
-    mov ebp, esp
-    push ebx
-    push ecx
-    push edx
-    push edi
-    
-    mov eax, [ebp+8]
-    mov ebx, [ebp+12]
-    movzx edx, byte [ebp+16]
-    
-    mov edi, VGA_MEMORY
-    imul ebx, SCREEN_WIDTH
-    add edi, ebx
-    add edi, eax
-    
-    mov esi, char_i_bits
-    mov ebx, 7
-.i_row:
-    mov ecx, 3
-.i_col:
-    lodsb
-    test al, al
-    jz .i_skip
-    mov byte [edi], dl
-.i_skip:
-    inc edi
-    dec ecx
-    jnz .i_col
-    add edi, SCREEN_WIDTH - 3
-    dec ebx
-    jnz .i_row
-    
-    pop edi
-    pop edx
-    pop ecx
-    pop ebx
-    pop ebp
-    ret
-
-; n
-draw_char_n:
-    push ebp
-    mov ebp, esp
-    push ebx
-    push ecx
-    push edx
-    push edi
-    
-    mov eax, [ebp+8]
-    mov ebx, [ebp+12]
-    movzx edx, byte [ebp+16]
-    
-    mov edi, VGA_MEMORY
-    imul ebx, SCREEN_WIDTH
-    add edi, ebx
-    add edi, eax
-    
-    mov esi, char_n_bits
-    mov ebx, 7
-.n_row:
-    mov ecx, 5
-.n_col:
-    lodsb
-    test al, al
-    jz .n_skip
-    mov byte [edi], dl
-.n_skip:
-    inc edi
-    dec ecx
-    jnz .n_col
-    add edi, SCREEN_WIDTH - 5
-    dec ebx
-    jnz .n_row
-    
-    pop edi
     pop edx
     pop ecx
     pop ebx
@@ -609,22 +405,6 @@ draw_chinese_lu:
 section .data
     ; Include mouse cursor data
     %include "mouse_data.inc"
-    
-    ; English character bitmaps (5x7)
-    char_L_bits: db 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0
-                 db 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1
-    
-    char_o_bits: db 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0
-                 db 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0
-    
-    char_g_bits: db 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0
-                 db 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0
-    
-    char_i_bits: db 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0
-                 db 1, 0, 0, 1, 0, 0, 1, 0, 0
-    
-    char_n_bits: db 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0
-                 db 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0
     
     ; 登 expanded bitmap (12x12 = 144 bytes, 0 or 1)
     deng_expanded: db 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0
