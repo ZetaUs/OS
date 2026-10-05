@@ -36,7 +36,7 @@ extern "C" void desktop_screen();
 
 extern "C" __attribute__((noreturn)) void kernel_main() {
     fill(1);
-    draw_load(130, 38);
+    draw_logo(120, 35);
     text(124, 112, "NOVA OS", 15, 2);
     progress(0);
 
