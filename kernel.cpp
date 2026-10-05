@@ -20,19 +20,45 @@ static inline uint8_t in8(uint16_t port) {
     return value;
 }
 
+static void fill(uint8_t color);
+static void rectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint8_t color);
+static void character(uint32_t x, uint32_t y, char value, uint8_t color, uint8_t scale);
+static void text(uint32_t x, uint32_t y, const char* value, uint8_t color, uint8_t scale);
+static void progress(uint8_t percent);
+static void loading_status(const char* message, uint8_t percent);
+static void loading_pause();
 static void serial_initialize();
 static void serial_write(const char* text);
-static void fill(uint8_t color);
-static void rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint8_t color);
-static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t scale);
-static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8_t scale);
-static void progress(uint8_t percent);
 
 extern "C" void login_screen();
 extern "C" void desktop_screen();
 
 extern "C" __attribute__((noreturn)) void kernel_main() {
-    // Skip loading screen - go directly to login
+    fill(1);
+    draw_logo(120, 35);
+    text(124, 125, "NOVA OS", 15, 2);
+    text(125, 148, "STARTING", 15, 1);
+    progress(0);
+
+    serial_initialize();
+    serial_write("Nova OS: kernel entered");
+
+    loading_status("VIDEO READY", 25);
+    serial_write("Nova OS: video ready");
+    loading_pause();
+
+    loading_status("CORE READY", 50);
+    serial_write("Nova OS: core ready");
+    loading_pause();
+
+    loading_status("PREPARING LOGIN", 75);
+    serial_write("Nova OS: preparing login");
+    loading_pause();
+
+    loading_status("READY", 100);
+    serial_write("Nova OS: loading complete");
+    loading_pause();
+
     login_screen();
     desktop_screen();
 
@@ -47,17 +73,31 @@ static void fill(uint8_t color) {
     }
 }
 
-static void rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint8_t color) {
-    for (uint16_t row = 0; row < height; ++row) {
-        for (uint16_t column = 0; column < width; ++column) {
+static void rectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint8_t color) {
+    if (x >= 320u || y >= 200u) {
+        return;
+    }
+    if (width > 320u - x) {
+        width = 320u - x;
+    }
+    if (height > 200u - y) {
+        height = 200u - y;
+    }
+
+    for (uint32_t row = 0; row < height; ++row) {
+        for (uint32_t column = 0; column < width; ++column) {
             vram[(y + row) * 320u + x + column] = color;
         }
     }
 }
 
 static void progress(uint8_t percent) {
-    rectangle(62, 149, 196, 4, 3);
-    rectangle(62, 149, static_cast<uint16_t>(196u * percent / 100u), 4, 10);
+    if (percent > 100u) {
+        percent = 100u;
+    }
+    rectangle(55, 173, 210, 8, 8);
+    rectangle(57, 175, 206, 4, 0);
+    rectangle(57, 175, 206u * percent / 100u, 4, 14);
 }
 
 static const uint8_t* glyph(char value) {
@@ -77,22 +117,11 @@ static const uint8_t* glyph(char value) {
         {17, 17, 17, 21, 21, 27, 17}, {17, 17, 10, 4, 10, 17, 17},
         {17, 17, 10, 4, 4, 4, 4}, {31, 1, 2, 4, 8, 16, 31}
     };
-    static const uint8_t digits[10][7] = {
-        {30, 33, 33, 33, 33, 33, 30}, {2, 2, 2, 2, 2, 2, 2},
-        {30, 1, 1, 30, 32, 32, 63}, {30, 1, 1, 30, 1, 1, 30},
-        {17, 17, 17, 31, 1, 1, 1}, {63, 32, 32, 30, 1, 1, 30},
-        {30, 32, 32, 62, 33, 33, 30}, {63, 1, 2, 4, 8, 16, 32},
-        {30, 33, 33, 30, 33, 33, 30}, {30, 33, 33, 31, 1, 1, 30}
-    };
-
     if (value >= 'A' && value <= 'Z') {
         return letters[value - 'A'];
     }
     if (value >= 'a' && value <= 'z') {
         return letters[value - 'a'];
-    }
-    if (value >= '0' && value <= '9') {
-        return digits[value - '0'];
     }
     if (value == ' ' || value == '\n' || value == '\r' || value == '\t') {
         return blank;
@@ -100,8 +129,8 @@ static const uint8_t* glyph(char value) {
     return blank;
 }
 
-static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t scale) {
-    if (value == '\0') {
+static void character(uint32_t x, uint32_t y, char value, uint8_t color, uint8_t scale) {
+    if (value == '\0' || scale == 0) {
         return;
     }
 
@@ -109,20 +138,22 @@ static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t
     for (uint8_t row = 0; row < 7; ++row) {
         for (uint8_t column = 0; column < 5; ++column) {
             if ((bitmap[row] & (1u << (4u - column))) != 0) {
-                rectangle(x + column * scale, y + row * scale, scale, scale, color);
+                rectangle(x + static_cast<uint32_t>(column) * scale,
+                          y + static_cast<uint32_t>(row) * scale,
+                          scale, scale, color);
             }
         }
     }
 }
 
-static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8_t scale) {
-    uint16_t cursor_x = x;
-    uint16_t cursor_y = y;
+static void text(uint32_t x, uint32_t y, const char* value, uint8_t color, uint8_t scale) {
+    uint32_t cursor_x = x;
+    uint32_t cursor_y = y;
 
-    while (*value != '\0') {
+    while (*value != '\0' && cursor_y < 200u) {
         if (*value == '\n') {
             cursor_x = x;
-            cursor_y += static_cast<uint16_t>(8u * scale);
+            cursor_y += 8u * scale;
             ++value;
             continue;
         }
@@ -133,7 +164,19 @@ static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8
         }
 
         character(cursor_x, cursor_y, *value++, color, scale);
-        cursor_x += static_cast<uint16_t>(6u * scale);
+        cursor_x += 6u * scale;
+    }
+}
+
+static void loading_status(const char* message, uint8_t percent) {
+    rectangle(48, 140, 224, 22, 1);
+    text(160u - 3u * 5u * 1u, 148, message, 15, 1);
+    progress(percent);
+}
+
+static void loading_pause() {
+    for (volatile uint32_t count = 0; count < 3000000u; ++count) {
+        __asm__ volatile("" : : : "memory");
     }
 }
 
@@ -149,10 +192,21 @@ static void serial_initialize() {
 
 static void serial_write(const char* text_value) {
     while (*text_value != '\0') {
-        while ((in8(0x3FD) & 0x20) == 0) {
+        uint32_t timeout = 1000000u;
+        while ((in8(0x3FD) & 0x20) == 0 && timeout != 0) {
+            --timeout;
         }
-        out8(0x3F8, static_cast<uint8_t>(*text_value++));
+        if (timeout != 0) {
+            out8(0x3F8, static_cast<uint8_t>(*text_value));
+        }
+        ++text_value;
     }
-    out8(0x3F8, '\r');
-    out8(0x3F8, '\n');
+    uint32_t timeout = 1000000u;
+    while ((in8(0x3FD) & 0x20) == 0 && timeout != 0) {
+        --timeout;
+    }
+    if (timeout != 0) {
+        out8(0x3F8, '\r');
+        out8(0x3F8, '\n');
+    }
 }
