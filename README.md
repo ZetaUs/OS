@@ -22,4 +22,4 @@
 .\run.bat
 ```
 
-关闭 QEMU 窗口即可停止模拟。成功启动时应先看到 Nova OS loading 画面，随后进入登录界面。
+关闭 QEMU 窗口即可停止模拟。成功启动时应先看到 Nova OS loading 画面，随后停留在登录界面；按 Enter 进入桌面。

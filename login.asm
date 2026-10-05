@@ -25,31 +25,30 @@ _login_screen:
     push esi
     push edi
     
-    ; Initialize keyboard controller (simple version)
-    ; Enable keyboard interface
-    mov al, 0xAE
-    out 0x64, al
-    
-    ; Enable keyboard scanning
-    mov al, 0xF4
-    out 0x60, al
-    
-    ; Clear screen with RED background (test - color 4 = red)
+    ; Clear screen with the login background color.
     mov edi, VGA_MEMORY
     mov ecx, 320 * 200
-    mov al, 4  ; RED instead of blue
+    mov al, COLOR_BG
     rep stosb
     
-    ; Draw login box border (x=80, y=40, w=160, h=120, color=8)
+    ; Draw the bordered login panel.
     push COLOR_BORDER
-    push 120
-    push 160
-    push 40
-    push 80
+    push 132
+    push 180
+    push 34
+    push 70
+    call draw_rect
+    add esp, 20
+
+    push COLOR_INNER
+    push 124
+    push 172
+    push 38
+    push 74
     call draw_rect
     add esp, 20
     
-    ; Draw "登录" button (x=110, y=90, w=100, h=16, color=14)
+    ; Draw the "登录" button.
     push COLOR_BUTTON
     push 16
     push 100
@@ -73,14 +72,23 @@ _login_screen:
     call draw_chinese_lu
     add esp, 12
     
-    ; Simple delay loop
-    mov ecx, 1000000
-.delay_loop:
-    dec ecx
-    jnz .delay_loop
-    
-    ; Exit immediately (for testing)
+    ; Keep the login screen visible until Enter is pressed.
+.wait_key:
+    in al, 0x64
+    test al, 1
+    jz .wait_key
+
+    ; Discard auxiliary-device bytes; only accept keyboard scan codes.
+    test al, 0x20
+    jnz .discard_aux
+    in al, 0x60
+    cmp al, 0x1C
+    jne .wait_key
     jmp .login_exit
+
+.discard_aux:
+    in al, 0x60
+    jmp .wait_key
 
 .login_exit:
     pop edi
