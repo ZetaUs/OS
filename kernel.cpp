@@ -62,7 +62,7 @@ static void progress(uint8_t percent) {
 
 static const uint8_t* glyph(char value) {
     static const uint8_t blank[7] = {0, 0, 0, 0, 0, 0, 0};
-    static const uint8_t letters[27][7] = {
+    static const uint8_t letters[26][7] = {
         {14, 17, 17, 31, 17, 17, 17}, {30, 17, 17, 30, 17, 17, 30},
         {14, 17, 16, 16, 16, 17, 14}, {30, 17, 17, 17, 17, 17, 30},
         {31, 16, 16, 30, 16, 16, 31}, {31, 16, 16, 30, 16, 16, 16},
@@ -75,19 +75,36 @@ static const uint8_t* glyph(char value) {
         {15, 16, 16, 14, 1, 1, 30}, {31, 4, 4, 4, 4, 4, 4},
         {17, 17, 17, 17, 17, 17, 14}, {17, 17, 17, 17, 17, 10, 4},
         {17, 17, 17, 21, 21, 27, 17}, {17, 17, 10, 4, 10, 17, 17},
-        {17, 17, 10, 4, 4, 4, 4}, {31, 1, 2, 4, 8, 16, 31},
-        {0, 0, 0, 0, 0, 0, 0}
+        {17, 17, 10, 4, 4, 4, 4}, {31, 1, 2, 4, 8, 16, 31}
     };
+    static const uint8_t digits[10][7] = {
+        {30, 33, 33, 33, 33, 33, 30}, {2, 2, 2, 2, 2, 2, 2},
+        {30, 1, 1, 30, 32, 32, 63}, {30, 1, 1, 30, 1, 1, 30},
+        {17, 17, 17, 31, 1, 1, 1}, {63, 32, 32, 30, 1, 1, 30},
+        {30, 32, 32, 62, 33, 33, 30}, {63, 1, 2, 4, 8, 16, 32},
+        {30, 33, 33, 30, 33, 33, 30}, {30, 33, 33, 31, 1, 1, 30}
+    };
+
     if (value >= 'A' && value <= 'Z') {
         return letters[value - 'A'];
     }
-    if (value == ' ') {
+    if (value >= 'a' && value <= 'z') {
+        return letters[value - 'a'];
+    }
+    if (value >= '0' && value <= '9') {
+        return digits[value - '0'];
+    }
+    if (value == ' ' || value == '\n' || value == '\r' || value == '\t') {
         return blank;
     }
     return blank;
 }
 
 static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t scale) {
+    if (value == '\0') {
+        return;
+    }
+
     const uint8_t* bitmap = glyph(value);
     for (uint8_t row = 0; row < 7; ++row) {
         for (uint8_t column = 0; column < 5; ++column) {
@@ -99,9 +116,24 @@ static void character(uint16_t x, uint16_t y, char value, uint8_t color, uint8_t
 }
 
 static void text(uint16_t x, uint16_t y, const char* value, uint8_t color, uint8_t scale) {
+    uint16_t cursor_x = x;
+    uint16_t cursor_y = y;
+
     while (*value != '\0') {
-        character(x, y, *value++, color, scale);
-        x += static_cast<uint16_t>(6u * scale);
+        if (*value == '\n') {
+            cursor_x = x;
+            cursor_y += static_cast<uint16_t>(8u * scale);
+            ++value;
+            continue;
+        }
+        if (*value == '\r') {
+            cursor_x = x;
+            ++value;
+            continue;
+        }
+
+        character(cursor_x, cursor_y, *value++, color, scale);
+        cursor_x += static_cast<uint16_t>(6u * scale);
     }
 }
 
