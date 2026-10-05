@@ -35,20 +35,19 @@ extern "C" void desktop_screen();
 
 extern "C" __attribute__((noreturn)) void kernel_main() {
     fill(1);
-    draw_logo(120, 35);
-    text(124, 125, "NOVA OS", 15, 2);
-    text(125, 148, "STARTING", 15, 1);
+    draw_load(130, 38);
+    text(124, 112, "NOVA OS", 15, 2);
     progress(0);
 
     serial_initialize();
     serial_write("Nova OS: kernel entered");
 
-    loading_status("VIDEO READY", 25);
-    serial_write("Nova OS: video ready");
+    loading_status("KERNEL STARTED", 25);
+    serial_write("Nova OS: kernel started");
     loading_pause();
 
-    loading_status("CORE READY", 50);
-    serial_write("Nova OS: core ready");
+    loading_status("VIDEO READY", 50);
+    serial_write("Nova OS: video ready");
     loading_pause();
 
     loading_status("PREPARING LOGIN", 75);
@@ -170,7 +169,11 @@ static void text(uint32_t x, uint32_t y, const char* value, uint8_t color, uint8
 
 static void loading_status(const char* message, uint8_t percent) {
     rectangle(48, 140, 224, 22, 1);
-    text(160u - 3u * 5u * 1u, 148, message, 15, 1);
+    uint32_t length = 0;
+    while (message[length] != '\0') {
+        ++length;
+    }
+    text((320u - length * 6u) / 2u, 148, message, 15, 1);
     progress(percent);
 }
 

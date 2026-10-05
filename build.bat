@@ -46,6 +46,11 @@ if errorlevel 1 exit /b 1
 "%OBJCOPY%" --only-section=.text --only-section=.rdata --only-section=.data -O binary "%OUT%\kernel.exe" "%OUT%\kernel.bin"
 if errorlevel 1 exit /b 1
 
+for %%F in ("%OUT%\kernel.bin") do if %%~zF GTR 32768 (
+  echo Kernel exceeds the 64-sector BIOS loading limit: %%~zF bytes
+  exit /b 1
+)
+
 echo [7/7] Building disk images...
 
 :: Layout:

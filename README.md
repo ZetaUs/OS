@@ -10,7 +10,7 @@
 .\build.bat
 ```
 
-构建会使用 Dev-C++ 自带的 MinGW 将 `kernel.cpp` 编译为 32 位 freestanding 内核，再与 NASM BIOS 引导程序一起生成磁盘镜像。stage2 从 LBA 9 读取内核、切换到 32 位保护模式并跳转到 C++ 入口；内核在 VGA 文本模式输出启动信息，并将启动标记写到 COM1。
+构建会使用 Dev-C++ 自带的 MinGW 将 `kernel.cpp` 编译为 32 位 freestanding 内核，再与 NASM BIOS 引导程序一起生成磁盘镜像。stage2 从 LBA 9 读取内核、切换到 32 位保护模式并跳转到 C++ 入口；内核先在 VGA 320x200 图形模式显示 loading 图标、阶段状态和进度条，完成后进入登录界面。启动阶段信息同时写到 COM1。内核镜像超过 stage2 可读取的 64 个扇区时，构建会报错退出。
 
 默认检测 `D:\Program\Dev-Cpp`、Program Files 下的 Dev-C++ 或 PATH 中的 `g++.exe`。自定义安装位置时设置 `DEVCPP_HOME` 为 Dev-C++ 安装目录。
 
@@ -22,4 +22,4 @@
 .\run.bat
 ```
 
-关闭 QEMU 窗口即可停止模拟。成功启动时应看到 Nova OS 的 C++ 内核启动界面。
+关闭 QEMU 窗口即可停止模拟。成功启动时应先看到 Nova OS loading 画面，随后进入登录界面。
