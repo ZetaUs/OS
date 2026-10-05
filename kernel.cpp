@@ -27,6 +27,7 @@ static void text(uint32_t x, uint32_t y, const char* value, uint8_t color, uint8
 static void progress(uint8_t percent);
 static void loading_status(const char* message, uint8_t percent);
 static void loading_pause();
+static uint16_t pit_counter();
 static void serial_initialize();
 static void serial_write(const char* text);
 
@@ -178,9 +179,23 @@ static void loading_status(const char* message, uint8_t percent) {
 }
 
 static void loading_pause() {
-    for (volatile uint32_t count = 0; count < 3000000u; ++count) {
-        __asm__ volatile("" : : : "memory");
+    uint16_t previous = pit_counter();
+    uint8_t ticks = 0;
+
+    while (ticks < 18u) {
+        const uint16_t current = pit_counter();
+        if (current > previous) {
+            ++ticks;
+        }
+        previous = current;
     }
+}
+
+static uint16_t pit_counter() {
+    out8(0x43, 0x00);
+    const uint8_t low = in8(0x40);
+    const uint8_t high = in8(0x40);
+    return static_cast<uint16_t>(low | (static_cast<uint16_t>(high) << 8));
 }
 
 static void serial_initialize() {
