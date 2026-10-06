@@ -240,10 +240,25 @@ protected_mode_entry:
     mov ss, ax
     mov esp, 0x90000
 
+    ; Write "PM OK" to VGA text mode to confirm protected mode works
+    mov edi, 0xB8000
+    mov word [edi], 0x0E50  ; 'P' in yellow
+    mov word [edi+2], 0x0E4D ; 'M' in yellow
+    mov word [edi+4], 0x0E20 ; ' ' in yellow
+    mov word [edi+6], 0x0E4F ; 'O' in yellow
+    mov word [edi+8], 0x0E4B ; 'K' in yellow
+
     ; VBE parameters are already at 0x5000-0x5010 from real mode
     ; No need to copy again
 
 continue_boot:
+    ; Write "CALL" to VGA text mode before calling kernel
+    mov edi, 0xB8000 + 20
+    mov word [edi], 0x0C43  ; 'C' in red
+    mov word [edi+2], 0x0C41 ; 'A' in red
+    mov word [edi+4], 0x0C4C ; 'L' in red
+    mov word [edi+6], 0x0C4C ; 'L' in red
+    
     ; Call the kernel (32-bit protected mode) with 5 parameters
     push dword [0x5010]  ; bpp
     push dword [0x500C]  ; pitch
@@ -252,6 +267,12 @@ continue_boot:
     push dword [0x5000]  ; framebuffer_base
     call 0x10000
     add esp, 20
+
+    ; Write "RET" to VGA text mode after kernel returns
+    mov edi, 0xB8000 + 40
+    mov word [edi], 0x0A52  ; 'R' in green
+    mov word [edi+2], 0x0A45 ; 'E' in green
+    mov word [edi+4], 0x0A54 ; 'T' in green
 
 halt_kernel:
     cli
