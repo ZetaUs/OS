@@ -20,10 +20,6 @@ start:
     mov ax, 0x0013
     int 0x10
 
-    ; Display a message to show we're alive
-    mov si, boot_msg
-    call print_string
-
     ; Try VBE mode 0x118 (800x600x24) - most compatible
     mov ax, 0x4F01
     mov cx, 0x0118
@@ -72,22 +68,6 @@ start:
     int 0x10
     cmp ax, 0x004F
     jne vbe_error
-
-    ; Display success message
-    mov si, vbe_ok_msg
-    call print_string
-    
-    ; Wait for key press
-    mov ah, 0x00
-    int 0x16
-
-    ; Display success message
-    mov si, vbe_ok_msg
-    call print_string
-    
-    ; Wait for key press
-    mov ah, 0x00
-    int 0x16
 
     mov si, kernel_dap
     mov dl, [boot_drive]
@@ -139,6 +119,17 @@ kernel_load_error:
     hlt
     jmp .halt
 
+; Print string function
+print_string:
+    lodsb
+    test al, al
+    jz .done
+    mov ah, 0x0E
+    int 0x10
+    jmp print_string
+.done:
+    ret
+
 align 8
 gdt_start:
     dq 0
@@ -172,6 +163,10 @@ boot_drive: db 0
 error_message: db 'Kernel load error', 0
 vbe_error_message: db 'VBE mode error', 0
 framebuffer_base: dd 0
+vbe_width: dd 0
+vbe_height: dd 0
+vbe_bpp: db 0
+vbe_pitch: dw 0
 align 4
 vbe_mode_info: times 256 db 0
 
@@ -186,64 +181,13 @@ protected_mode_entry:
     mov ss, ax
     mov esp, 0x90000
 
-    ; Configure VBE for 1920x1080x32 using Bochs VBE extension (optional)
-    mov dx, 0x01CE
-    xor ax, ax
-    out dx, ax
-    inc dx
-    in ax, dx
-    cmp ax, 0xB0C5
-    jne skip_bochs_vbe
-
-    ; Index 4: Enable LFB
-    mov dx, 0x01CE
-    mov ax, 4
-    out dx, ax
-    inc dx
-    mov ax, 0x0041
-    out dx, ax
-
-    ; Index 1: Width = 1920
-    mov dx, 0x01CE
-    mov ax, 1
-    out dx, ax
-    inc dx
-    mov ax, 1920
-    out dx, ax
-
-    ; Index 2: Height = 1080
-    mov dx, 0x01CE
-    mov ax, 2
-    out dx, ax
-    inc dx
-    mov ax, 1080
-    out dx, ax
-
-    ; Index 3: BPP = 32
-    mov dx, 0x01CE
-    mov ax, 3
-    out dx, ax
-    inc dx
-    mov ax, 32
-    out dx, ax
-
-    ; Index 6: Pitch (bytes per line) = 1920 * 4 = 7680
-    mov dx, 0x01CE
-    mov ax, 6
-    out dx, ax
-    inc dx
-    mov ax, 7680
-    out dx, ax
-
-skip_bochs_vbe:
-
     mov eax, [framebuffer_base]
     mov [0x5000], eax
     mov eax, [vbe_width]
     mov [0x5004], eax
     mov eax, [vbe_height]
     mov [0x5008], eax
-    mov eax, [vbe_pitch]
+    movzx eax, word [vbe_pitch]
     mov [0x500C], eax
 
 continue_boot:
