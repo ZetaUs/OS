@@ -224,6 +224,43 @@ desktop_draw_computer_icon:
     pop ebx
     ret
 
+desktop_draw_explorer_icon:
+    push ebx
+    push esi
+    push edi
+    xor esi, esi
+.explorer_row:
+    xor edi, edi
+.explorer_column:
+    mov eax, esi
+    imul eax, EXPLORER_ICON_WIDTH
+    add eax, edi
+    movzx ebx, byte [explorer_icon_data + eax]
+    test ebx, ebx
+    jz .explorer_next
+    push ebx
+    push dword 1
+    push dword 1
+    mov eax, esi
+    add eax, 22
+    push eax
+    mov eax, edi
+    add eax, 52
+    push eax
+    call draw_rect
+    add esp, 20
+.explorer_next:
+    inc edi
+    cmp edi, EXPLORER_ICON_WIDTH
+    jl .explorer_column
+    inc esi
+    cmp esi, EXPLORER_ICON_HEIGHT
+    jl .explorer_row
+    pop edi
+    pop esi
+    pop ebx
+    ret
+
 desktop_draw_logo:
     push ebp
     mov ebp, esp
