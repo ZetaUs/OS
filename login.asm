@@ -532,6 +532,7 @@ draw_logical_pixel:
     mov eax, [ebp+8]
     imul eax, LOGICAL_SCALE
     mov ebx, [ebp+12]
+    imul ebx, LOGICAL_SCALE
     imul ebx, SCREEN_WIDTH
     add ebx, eax
     shl ebx, 2
