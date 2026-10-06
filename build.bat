@@ -1,5 +1,6 @@
 @echo off
 setlocal
+call "%~dp0push.bat"
 set "ROOT=%~dp0.."
 set "NASM=%ROOT%\Program\NASM\nasm.exe"
 set "DEVCPP_BIN="
