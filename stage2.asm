@@ -252,27 +252,70 @@ protected_mode_entry:
     ; No need to copy again
 
 continue_boot:
-    ; Write "CALL" to VGA text mode before calling kernel
-    mov edi, 0xB8000 + 20
-    mov word [edi], 0x0C43  ; 'C' in red
-    mov word [edi+2], 0x0C41 ; 'A' in red
-    mov word [edi+4], 0x0C4C ; 'L' in red
-    mov word [edi+6], 0x0C4C ; 'L' in red
+    ; Test: Fill framebuffer with blue directly from stage2
+    ; Get framebuffer address from 0x5000
+    mov eax, [0x5000]        ; framebuffer_base
+    mov ebx, [0x5004]        ; width
+    mov ecx, [0x5008]        ; height
+    mov edx, [0x500C]        ; pitch
+    movzx esi, byte [0x5010] ; bpp
+    
+    ; Fill framebuffer with blue (0x0000AA in 24-bit, or RGB565 blue in 16-bit)
+    mov edi, eax             ; edi = framebuffer address
+    mov eax, ebx             ; eax = width
+    mul ecx                  ; eax = width * height (total pixels)
+    mov ecx, eax             ; ecx = pixel count
+    
+.fill_loop:
+    cmp esi, 16
+    je .write16
+    cmp esi, 24
+    je .write24
+    cmp esi, 32
+    je .write32
+    jmp .skip_write
+
+.write16:
+    ; 16-bit RGB565 blue = 0x001F
+    mov word [edi], 0x001F
+    add edi, 2
+    jmp .next_pixel
+
+.write24:
+    ; 24-bit BGR blue = 0xAA0000
+    mov byte [edi], 0xAA     ; Blue
+    mov byte [edi+1], 0x00   ; Green
+    mov byte [edi+2], 0x00   ; Red
+    add edi, 3
+    jmp .next_pixel
+
+.write32:
+    ; 32-bit BGRA blue = 0xAA0000FF
+    mov byte [edi], 0xAA     ; Blue
+    mov byte [edi+1], 0x00   ; Green
+    mov byte [edi+2], 0x00   ; Red
+    mov byte [edi+3], 0xFF   ; Alpha
+    add edi, 4
+    jmp .next_pixel
+
+.next_pixel:
+    dec ecx
+    jnz .fill_loop
+
+.skip_write:
+    ; Halt after filling framebuffer
+    cli
+    hlt
+    jmp .skip_write
     
     ; Call the kernel (32-bit protected mode) with 5 parameters
-    push dword [0x5010]  ; bpp
-    push dword [0x500C]  ; pitch
-    push dword [0x5008]  ; height
-    push dword [0x5004]  ; width
-    push dword [0x5000]  ; framebuffer_base
-    call 0x10000
-    add esp, 20
-
-    ; Write "RET" to VGA text mode after kernel returns
-    mov edi, 0xB8000 + 40
-    mov word [edi], 0x0A52  ; 'R' in green
-    mov word [edi+2], 0x0A45 ; 'E' in green
-    mov word [edi+4], 0x0A54 ; 'T' in green
+    ; push dword [0x5010]  ; bpp
+    ; push dword [0x500C]  ; pitch
+    ; push dword [0x5008]  ; height
+    ; push dword [0x5004]  ; width
+    ; push dword [0x5000]  ; framebuffer_base
+    ; call 0x10000
+    ; add esp, 20
 
 halt_kernel:
     cli
