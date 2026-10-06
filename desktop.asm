@@ -115,35 +115,13 @@ desktop_draw_scene:
     call draw_rect
     add esp, 20
 
-    ; Four-pane wallpaper mark sits in the open right half.
-    push dword 11
-    push dword 22
-    push dword 22
-    push dword 55
-    push dword 202
-    call draw_rect
-    add esp, 20
-    push dword 3
-    push dword 22
-    push dword 22
-    push dword 55
-    push dword 228
-    call draw_rect
-    add esp, 20
-    push dword 3
-    push dword 22
-    push dword 22
-    push dword 81
-    push dword 201
-    call draw_rect
-    add esp, 20
-    push dword 11
-    push dword 22
-    push dword 22
-    push dword 81
-    push dword 227
-    call draw_rect
-    add esp, 20
+    ; Reuse the Nova logo as the wallpaper mark.
+    push dword 48
+    push dword 48
+    push dword 50
+    push dword 204
+    call desktop_draw_logo
+    add esp, 16
 
     ; Compact desktop shortcuts aligned along the left edge.
     call desktop_draw_computer_icon
@@ -169,7 +147,7 @@ desktop_draw_scene:
     call draw_rect
     add esp, 20
     push dword 14
-    push dword folder_label
+    push dword explorer_label
     push dword 70
     push dword 4
     call draw_text
@@ -194,42 +172,13 @@ desktop_draw_scene:
     call draw_rect
     add esp, 20
 
-    ; Start button and four-pane mark.
-    push dword 8
-    push dword 8
-    push dword 8
-    push dword 172
-    push dword 0
-    call draw_rect
-    add esp, 20
-    push dword 3
-    push dword 2
-    push dword 2
+    ; Use the same Nova logo on the Start button.
+    push dword 6
+    push dword 6
     push dword 173
-    push dword 2
-    call draw_rect
-    add esp, 20
-    push dword 3
-    push dword 2
-    push dword 2
-    push dword 173
-    push dword 5
-    call draw_rect
-    add esp, 20
-    push dword 3
-    push dword 2
-    push dword 2
-    push dword 176
-    push dword 2
-    call draw_rect
-    add esp, 20
-    push dword 3
-    push dword 2
-    push dword 2
-    push dword 176
-    push dword 5
-    call draw_rect
-    add esp, 20
+    push dword 1
+    call desktop_draw_logo
+    add esp, 16
 
     ; Clock area.
     push dword 8
@@ -286,6 +235,57 @@ desktop_draw_computer_icon:
     pop edi
     pop esi
     pop ebx
+    ret
+
+desktop_draw_logo:
+    push ebp
+    mov ebp, esp
+    sub esp, 12
+    push ebx
+    push esi
+    push edi
+    mov dword [ebp-4], 0
+.logo_row:
+    mov dword [ebp-8], 0
+.logo_column:
+    mov eax, [ebp-4]
+    imul eax, LOGO_HEIGHT
+    xor edx, edx
+    div dword [ebp+20]
+    imul eax, LOGO_WIDTH
+    mov [ebp-12], eax
+    mov eax, [ebp-8]
+    imul eax, LOGO_WIDTH
+    xor edx, edx
+    div dword [ebp+16]
+    add eax, [ebp-12]
+    cmp byte [logo_mask + eax], 0
+    je .logo_next_column
+    push dword 14
+    push dword 1
+    push dword 1
+    mov eax, [ebp+12]
+    add eax, [ebp-4]
+    push eax
+    mov eax, [ebp+8]
+    add eax, [ebp-8]
+    push eax
+    call draw_rect
+    add esp, 20
+.logo_next_column:
+    inc dword [ebp-8]
+    mov eax, [ebp-8]
+    cmp eax, [ebp+16]
+    jl .logo_column
+    inc dword [ebp-4]
+    mov eax, [ebp-4]
+    cmp eax, [ebp+20]
+    jl .logo_row
+    pop edi
+    pop esi
+    pop ebx
+    mov esp, ebp
+    pop ebp
     ret
 
 desktop_redraw:
@@ -363,34 +363,46 @@ desktop_draw_start_menu:
     cmp byte [desktop_start_open], 0
     je .menu_done
     push dword 8
-    push dword 68
+    push dword 112
     push dword 104
-    push dword 78
+    push dword 60
     push dword 4
     call draw_rect
     add esp, 20
     push dword 1
     push dword 16
     push dword 100
-    push dword 80
+    push dword 64
     push dword 6
     call draw_rect
     add esp, 20
     push dword 15
     push dword menu_title
-    push dword 83
+    push dword 67
     push dword 10
     call draw_text
     add esp, 16
     push dword 15
-    push dword pc_menu_item
-    push dword 101
+    push dword explorer_menu_item
+    push dword 84
     push dword 12
     call draw_text
     add esp, 16
     push dword 15
-    push dword files_menu_item
-    push dword 119
+    push dword computer_menu_item
+    push dword 102
+    push dword 12
+    call draw_text
+    add esp, 16
+    push dword 15
+    push dword restart_menu_item
+    push dword 120
+    push dword 12
+    call draw_text
+    add esp, 16
+    push dword 15
+    push dword shutdown_menu_item
+    push dword 138
     push dword 12
     call draw_text
     add esp, 16
@@ -469,18 +481,25 @@ desktop_hit_test:
     jl .close_menu_outside
     cmp dword [desktop_mouse_x], 648
     jg .close_menu_outside
+    cmp dword [desktop_mouse_y], 486
+    jl .close_menu_outside
     cmp dword [desktop_mouse_y], 594
-    jl .close_menu_outside
-    cmp dword [desktop_mouse_y], 696
-    jle .open_pc
+    jle .open_files
     cmp dword [desktop_mouse_y], 702
-    jl .close_menu_outside
-    cmp dword [desktop_mouse_y], 798
+    jle .open_pc
+    cmp dword [desktop_mouse_y], 810
+    jle .restart_action
+    cmp dword [desktop_mouse_y], 918
     jle .open_files
 .close_menu_outside:
     mov byte [desktop_start_open], 0
     mov eax, 1
     ret
+
+.restart_action:
+    call desktop_restart
+.shutdown_action:
+    call desktop_shutdown
 
 .check_start_button:
     cmp dword [desktop_mouse_x], 0
@@ -556,6 +575,35 @@ desktop_hit_test:
 .no_action:
     xor eax, eax
     ret
+
+desktop_restart:
+    cli
+    mov ecx, 0x10000
+.restart_wait:
+    in al, 0x64
+    test al, 2
+    jz .restart_send
+    dec ecx
+    jnz .restart_wait
+.restart_send:
+    mov al, 0xFE
+    out 0x64, al
+    lidt [desktop_empty_idtr]
+    int3
+.restart_halt:
+    hlt
+    jmp .restart_halt
+
+desktop_shutdown:
+    cli
+    mov dx, 0x0604
+    mov ax, 0x2000
+    out dx, ax
+    mov dx, 0xB004
+    out dx, ax
+.shutdown_halt:
+    hlt
+    jmp .shutdown_halt
 
 desktop_draw_cursor:
     push eax
@@ -856,12 +904,16 @@ section .data
     clock_text: db '08:00', 0
     close_text: db 'X', 0
     pc_window_title: db 'COMPUTER', 0
-    files_window_title: db 'FILES', 0
+    files_window_title: db 'EXPLORER', 0
     disk_label: db 'LOCAL DISK C', 0
     empty_folder_text: db 'NO FILES YET', 0
     menu_title: db 'NOVA OS', 0
-    pc_menu_item: db 'COMPUTER', 0
-    files_menu_item: db 'FILES', 0
+    computer_menu_item: db 'COMPUTER', 0
+    explorer_menu_item: db 'EXPLORER', 0
+    restart_menu_item: db 'RESTART', 0
+    shutdown_menu_item: db 'SHUTDOWN', 0
+    desktop_empty_idtr: dw 0
+                          dd 0
     blank_glyph: times 8 db 0
 
     ; 5x7-style bitmaps stored as 8x8 rows.
