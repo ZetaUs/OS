@@ -82,7 +82,7 @@ desktop_draw_scene:
     mov eax, [desktop_vga_palette + 4]
     rep stosd
 
-    ; Draw an 800x600 desktop centered in the 1920x1080 framebuffer.
+    ; Draw an 800x600 Windows-inspired desktop in the centered viewport.
     push dword 9
     push dword 240
     push dword 320
@@ -91,117 +91,216 @@ desktop_draw_scene:
     call draw_rect
     add esp, 20
 
-    ; Computer icon.
+    ; Layered blue bands make a simple lighted wallpaper.
+    push dword 1
+    push dword 82
+    push dword 130
+    push dword 0
+    push dword 190
+    call draw_rect
+    add esp, 20
+    push dword 1
+    push dword 78
+    push dword 145
+    push dword 82
+    push dword 175
+    call draw_rect
+    add esp, 20
+    push dword 1
+    push dword 62
+    push dword 160
+    push dword 160
+    push dword 160
+    call draw_rect
+    add esp, 20
+
+    ; Four-pane window mark.
+    push dword 11
+    push dword 36
+    push dword 38
+    push dword 72
+    push dword 198
+    call draw_rect
+    add esp, 20
+    push dword 3
+    push dword 36
+    push dword 38
+    push dword 72
+    push dword 241
+    call draw_rect
+    add esp, 20
+    push dword 3
+    push dword 36
+    push dword 38
+    push dword 114
+    push dword 196
+    call draw_rect
+    add esp, 20
+    push dword 11
+    push dword 36
+    push dword 38
+    push dword 114
+    push dword 239
+    call draw_rect
+    add esp, 20
+
+    ; Compact desktop shortcuts aligned along the left edge.
     push dword 15
-    push dword 35
-    push dword 40
-    push dword 16
-    push dword 14
+    push dword 15
+    push dword 18
+    push dword 8
+    push dword 8
     call draw_rect
     add esp, 20
     push dword 9
-    push dword 29
-    push dword 29
-    push dword 19
-    push dword 19
+    push dword 10
+    push dword 14
+    push dword 10
+    push dword 10
     call draw_rect
     add esp, 20
     push dword 7
     push dword 4
-    push dword 13
-    push dword 23
-    push dword 27
+    push dword 3
+    push dword 22
+    push dword 15
     call draw_rect
     add esp, 20
     push dword 15
-    push dword 3
-    push dword 21
-    push dword 30
-    push dword 22
+    push dword 2
+    push dword 12
+    push dword 26
+    push dword 11
     call draw_rect
     add esp, 20
 
     push dword 15
     push dword computer_label
-    push dword 61
-    push dword 10
+    push dword 30
+    push dword 4
     call draw_text
     add esp, 16
 
-    ; Folder icon.
     push dword 14
-    push dword 8
-    push dword 36
-    push dword 81
-    push dword 17
+    push dword 4
+    push dword 22
+    push dword 52
+    push dword 7
     call draw_rect
     add esp, 20
     push dword 6
-    push dword 32
-    push dword 39
-    push dword 86
     push dword 14
+    push dword 22
+    push dword 54
+    push dword 5
     call draw_rect
     add esp, 20
     push dword 14
     push dword folder_label
-    push dword 124
-    push dword 10
+    push dword 70
+    push dword 4
     call draw_text
     add esp, 16
 
     call desktop_draw_window
     call desktop_draw_start_menu
 
-    ; Taskbar.
+    ; Windows-style taskbar.
     push dword 8
-    push dword 27
+    push dword 18
     push dword 320
-    push dword 213
+    push dword 222
     push dword 0
     call draw_rect
     add esp, 20
-    push dword 15
-    push dword 2
+    push dword 7
+    push dword 1
     push dword 320
-    push dword 213
+    push dword 222
     push dword 0
     call draw_rect
     add esp, 20
 
-    ; Start button.
-    push dword 1
-    push dword 21
-    push dword 58
-    push dword 217
+    ; Start button and four-pane mark.
+    push dword 8
+    push dword 17
+    push dword 20
+    push dword 223
+    push dword 0
+    call draw_rect
+    add esp, 20
+    push dword 3
+    push dword 4
+    push dword 4
+    push dword 228
     push dword 5
     call draw_rect
     add esp, 20
-    push dword 15
-    push dword start_text
-    push dword 221
-    push dword 14
-    call draw_text
-    add esp, 16
+    push dword 3
+    push dword 4
+    push dword 4
+    push dword 228
+    push dword 10
+    call draw_rect
+    add esp, 20
+    push dword 3
+    push dword 4
+    push dword 4
+    push dword 233
+    push dword 5
+    call draw_rect
+    add esp, 20
+    push dword 3
+    push dword 4
+    push dword 4
+    push dword 233
+    push dword 10
+    call draw_rect
+    add esp, 20
 
-    push dword 15
-    push dword taskbar_text
-    push dword 221
-    push dword 76
-    call draw_text
-    add esp, 16
-
+    ; Search field.
     push dword 7
-    push dword 21
-    push dword 49
-    push dword 219
-    push dword 265
+    push dword 14
+    push dword 88
+    push dword 224
+    push dword 20
+    call draw_rect
+    add esp, 20
+    push dword 0
+    push dword search_text
+    push dword 228
+    push dword 29
+    call draw_text
+    add esp, 16
+
+    ; Pinned File Explorer icon.
+    push dword 6
+    push dword 3
+    push dword 11
+    push dword 228
+    push dword 123
+    call draw_rect
+    add esp, 20
+    push dword 14
+    push dword 2
+    push dword 13
+    push dword 226
+    push dword 121
+    call draw_rect
+    add esp, 20
+
+    ; Clock area.
+    push dword 8
+    push dword 16
+    push dword 42
+    push dword 223
+    push dword 278
     call draw_rect
     add esp, 20
     push dword 15
     push dword clock_text
-    push dword 224
-    push dword 270
+    push dword 228
+    push dword 279
     call draw_text
     add esp, 16
 
@@ -406,11 +505,11 @@ desktop_hit_test:
     ret
 
 .check_start_button:
-    cmp dword [desktop_mouse_x], 570
+    cmp dword [desktop_mouse_x], 560
     jl .check_window
-    cmp dword [desktop_mouse_x], 715
+    cmp dword [desktop_mouse_x], 612
     jg .check_window
-    cmp dword [desktop_mouse_y], 780
+    cmp dword [desktop_mouse_y], 785
     jl .check_window
     cmp dword [desktop_mouse_y], 840
     jg .check_window
@@ -436,13 +535,13 @@ desktop_hit_test:
     ret
 
 .check_icons:
-    cmp dword [desktop_mouse_x], 575
+    cmp dword [desktop_mouse_x], 570
     jl .check_files_icon
-    cmp dword [desktop_mouse_x], 755
+    cmp dword [desktop_mouse_x], 710
     jg .check_files_icon
-    cmp dword [desktop_mouse_y], 270
+    cmp dword [desktop_mouse_y], 260
     jl .check_files_icon
-    cmp dword [desktop_mouse_y], 425
+    cmp dword [desktop_mouse_y], 350
     jg .check_files_icon
 .open_pc:
     mov byte [desktop_window], 1
@@ -451,24 +550,24 @@ desktop_hit_test:
     ret
 
 .check_files_icon:
-    cmp dword [desktop_mouse_x], 580
+    cmp dword [desktop_mouse_x], 570
     jl .check_files_label
-    cmp dword [desktop_mouse_x], 740
+    cmp dword [desktop_mouse_x], 660
     jg .check_files_label
-    cmp dword [desktop_mouse_y], 440
+    cmp dword [desktop_mouse_y], 355
     jl .check_files_label
-    cmp dword [desktop_mouse_y], 585
+    cmp dword [desktop_mouse_y], 440
     jg .check_files_label
     jmp .open_files
 
 .check_files_label:
-    cmp dword [desktop_mouse_x], 580
+    cmp dword [desktop_mouse_x], 570
     jl .no_action
-    cmp dword [desktop_mouse_x], 710
+    cmp dword [desktop_mouse_x], 675
     jg .no_action
-    cmp dword [desktop_mouse_y], 540
+    cmp dword [desktop_mouse_y], 405
     jl .no_action
-    cmp dword [desktop_mouse_y], 585
+    cmp dword [desktop_mouse_y], 450
     jg .no_action
 .open_files:
     mov byte [desktop_window], 2
@@ -771,13 +870,15 @@ draw_char:
     ret
 
 section .data
-    %include "vga_palette.inc"
-    VGA_PALETTE_TABLE desktop_vga_palette
+    desktop_vga_palette:
+        dd 0x000000, 0x06294F, 0x168A44, 0x1599E8
+        dd 0xD9534F, 0x8E44AD, 0xB86B22, 0xD4D9DE
+        dd 0x252B33, 0x0876C9, 0x2E9B57, 0x63C4FF
+        dd 0xE66B64, 0xAA72CC, 0xFFD34D, 0xFFFFFF
     %include "mouse_data.inc"
     computer_label: db 'MY PC', 0
     folder_label: db 'FILES', 0
-    start_text: db 'START', 0
-    taskbar_text: db 'NOVA OS', 0
+    search_text: db 'SEARCH', 0
     clock_text: db '08:00', 0
     close_text: db 'X', 0
     pc_window_title: db 'MY PC', 0
