@@ -94,8 +94,14 @@ kernel_load_error:
 align 8
 gdt_start:
     dq 0
+    ; 32-bit code segment
     dq 0x00CF9A000000FFFF
+    ; 32-bit data segment
     dq 0x00CF92000000FFFF
+    ; 64-bit code segment
+    dq 0x00A09A000000FFFF
+    ; 64-bit data segment
+    dq 0x00A092000000FFFF
 gdt_end:
 
 gdt_descriptor:
