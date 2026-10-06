@@ -10,7 +10,7 @@
 .\build.bat
 ```
 
-构建会使用 Dev-C++ 自带的 MinGW 将 `kernel.cpp` 编译为 32 位 freestanding 内核，再与 NASM BIOS 引导程序一起生成磁盘镜像。stage2 查询 VBE 线性帧缓冲并将 QEMU VBE 扩展切换到 1920x1080x32，再从 LBA 9 读取内核、切换到 32 位保护模式并跳转到 C++ 入口。内核和汇编界面以逻辑坐标绘制，并映射到 1920x1080 帧缓冲；启动时先显示 loading，再进入登录界面和桌面。启动阶段信息同时写到 COM1。内核镜像超过 stage2 可读取的 64 个扇区时，构建会报错退出。
+构建会使用 Dev-C++ 自带的 MinGW 将 `kernel.cpp` 编译为 32 位 freestanding 内核，再与 NASM BIOS 引导程序一起生成磁盘镜像。stage2 查询 VBE 线性帧缓冲并将 QEMU VBE 扩展切换到 1920x1080x32，再从 LBA 9 读取内核、切换到 32 位保护模式并跳转到固定入口跳板。内核先显示 loading 图并至少等待约 3 秒，再调用 `login.asm`；按 Enter 或单击登录按钮后进入 `desktop.asm`。汇编界面以逻辑坐标绘制，并映射到 1920x1080 帧缓冲。构建会为 NASM 添加源码目录作为 include 搜索路径；内核镜像超过 stage2 可读取的 64 个扇区时，构建会报错退出。
 
 默认检测 `D:\Program\Dev-Cpp`、Program Files 下的 Dev-C++ 或 PATH 中的 `g++.exe`。自定义安装位置时设置 `DEVCPP_HOME` 为 Dev-C++ 安装目录。
 

@@ -1,101 +1,93 @@
+typedef unsigned int uint32_t;
 typedef unsigned short uint16_t;
 typedef unsigned char uint8_t;
-typedef unsigned int uint32_t;
-typedef signed int int32_t;
-typedef signed char int8_t;
 
-static volatile uint8_t* vram8;
-static uint32_t screen_width;
-static uint32_t screen_height;
-static uint32_t screen_pitch;
-static uint32_t screen_bpp;
+static void pixel(uint16_t x, uint16_t y, uint8_t shade);
 
-// VGA text mode buffer
-static volatile uint16_t* vga_text = (volatile uint16_t*)0xB8000;
+#include "load_data.h"
 
-static inline void out8(uint16_t port, uint8_t value) {
-    __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
-}
+extern "C" void login_screen();
+extern "C" void desktop_screen();
 
-static inline uint8_t in8(uint16_t port) {
+static volatile uint32_t* loading_framebuffer;
+static uint32_t loading_pitch;
+
+static uint8_t in8(uint16_t port) {
     uint8_t value;
     __asm__ volatile("inb %1, %0" : "=a"(value) : "Nd"(port));
     return value;
 }
 
-// Write character to VGA text mode
-static void vga_write_char(char c, uint8_t color, int x, int y) {
-    vga_text[y * 80 + x] = (color << 8) | c;
+static void out8(uint16_t port, uint8_t value) {
+    __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
 }
 
-static void vga_write_string(const char* str, uint8_t color, int x, int y) {
-    int i = 0;
-    while (str[i]) {
-        vga_write_char(str[i], color, x + i, y);
-        i++;
-    }
+static uint16_t pit_read_count() {
+    out8(0x43, 0);
+    uint16_t low = in8(0x40);
+    uint16_t high = in8(0x40);
+    return low | (high << 8);
 }
 
-// Simple pixel write based on BPP
-static inline void write_pixel(uint32_t x, uint32_t y, uint32_t color) {
-    if (x >= screen_width || y >= screen_height) return;
-    
-    uint32_t offset = y * screen_pitch + x * (screen_bpp / 8);
-    
-    if (screen_bpp == 16) {
-        uint16_t rgb565 = ((color >> 19) & 0x1F) << 11 |
-                          ((color >> 10) & 0x3F) << 5 |
-                          ((color >> 3) & 0x1F);
-        vram8[offset] = rgb565 & 0xFF;
-        vram8[offset + 1] = (rgb565 >> 8) & 0xFF;
-    } else if (screen_bpp == 24) {
-        vram8[offset] = color & 0xFF;
-        vram8[offset + 1] = (color >> 8) & 0xFF;
-        vram8[offset + 2] = (color >> 16) & 0xFF;
-    } else if (screen_bpp == 32) {
-        vram8[offset] = color & 0xFF;
-        vram8[offset + 1] = (color >> 8) & 0xFF;
-        vram8[offset + 2] = (color >> 16) & 0xFF;
-        vram8[offset + 3] = 0xFF;
-    }
-}
+static void pixel(uint16_t x, uint16_t y, uint8_t shade) {
+    const uint32_t scale = 6;
+    const uint8_t intensity = static_cast<uint8_t>((shade * 255) / 63);
+    const uint32_t color = (intensity << 16) | (intensity << 8) | intensity;
 
-extern "C" __attribute__((noreturn)) void kernel_main(uint32_t framebuffer_base, uint32_t width, uint32_t height, uint32_t pitch, uint32_t bpp) {
-    // First, write to VGA text mode to confirm kernel is running
-    vga_write_string("KERNEL RUNNING", 0x0E, 0, 0);
-    vga_write_string("FB=", 0x0A, 0, 1);
-    
-    // Convert framebuffer address to hex string
-    char hex[] = "0x00000000";
-    uint32_t addr = framebuffer_base;
-    for (int i = 9; i >= 2; i--) {
-        int digit = addr & 0xF;
-        hex[i] = (digit < 10) ? ('0' + digit) : ('A' + digit - 10);
-        addr >>= 4;
-    }
-    vga_write_string(hex, 0x0A, 3, 1);
-    
-    vga_write_string("W=", 0x0A, 0, 2);
-    vga_write_string("H=", 0x0A, 10, 2);
-    vga_write_string("BPP=", 0x0A, 20, 2);
-    
-    // Store parameters
-    vram8 = reinterpret_cast<volatile uint8_t*>(framebuffer_base);
-    screen_width = width;
-    screen_height = height;
-    screen_pitch = pitch;
-    screen_bpp = bpp;
-    
-    // Fill screen with blue color
-    uint32_t blue_color = 0x0000AA;
-    for (uint32_t y = 0; y < screen_height; ++y) {
-        for (uint32_t x = 0; x < screen_width; ++x) {
-            write_pixel(x, y, blue_color);
+    for (uint32_t dy = 0; dy < scale; ++dy) {
+        volatile uint32_t* row = reinterpret_cast<volatile uint32_t*>(
+            reinterpret_cast<volatile uint8_t*>(loading_framebuffer) + (y * scale + dy) * loading_pitch
+        );
+        for (uint32_t dx = 0; dx < scale; ++dx) {
+            row[x * scale + dx] = color;
         }
     }
-    
-    vga_write_string("DONE", 0x0C, 0, 3);
-    
+}
+
+static void show_loading(uint32_t framebuffer_base, uint32_t width, uint32_t height, uint32_t pitch) {
+    volatile uint8_t* framebuffer = reinterpret_cast<volatile uint8_t*>(framebuffer_base);
+
+    for (uint32_t y = 0; y < height; ++y) {
+        volatile uint32_t* row = reinterpret_cast<volatile uint32_t*>(framebuffer + y * pitch);
+        for (uint32_t x = 0; x < width; ++x) {
+            row[x] = 0x00101A30;
+        }
+    }
+
+    loading_framebuffer = reinterpret_cast<volatile uint32_t*>(framebuffer_base);
+    loading_pitch = pitch;
+    draw_load(static_cast<uint16_t>((width / 6 - load_width) / 2),
+              static_cast<uint16_t>((height / 6 - load_height) / 2));
+
+    uint16_t previous = pit_read_count();
+    uint32_t elapsed_ticks = 0;
+    while (elapsed_ticks < 55) {
+        const uint16_t current = pit_read_count();
+        if (current > previous) {
+            ++elapsed_ticks;
+        }
+        previous = current;
+    }
+}
+
+extern "C" __attribute__((noreturn)) void kernel_main(
+    uint32_t framebuffer_base,
+    uint32_t width,
+    uint32_t height,
+    uint32_t pitch,
+    uint32_t bpp
+) {
+    volatile uint32_t* video_info = reinterpret_cast<volatile uint32_t*>(0x5000);
+    video_info[0] = framebuffer_base;
+    video_info[1] = width;
+    video_info[2] = height;
+    video_info[3] = pitch;
+    video_info[4] = bpp;
+
+    show_loading(framebuffer_base, width, height, pitch);
+    login_screen();
+    desktop_screen();
+
     for (;;) {
         __asm__ volatile("hlt");
     }

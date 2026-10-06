@@ -175,7 +175,7 @@ protected_mode_entry:
     push dword 1080
     push dword 1920
     push dword [0x5000]
-    mov eax, 0x1003E
+    mov eax, 0x10000
     call eax
     add esp, 20
 
