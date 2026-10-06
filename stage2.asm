@@ -98,7 +98,16 @@ start:
     call print_string
 
     cli
-    lgdt [gdt_descriptor]
+    
+    ; Build GDT descriptor at runtime with correct linear address
+    ; With org 0x7E00, label values are already physical addresses
+    mov ax, 0x0000
+    mov es, ax
+    mov word [es:0x4000], gdt_end - gdt_start - 1
+    mov eax, gdt_start
+    mov [es:0x4000 + 2], eax
+    
+    lgdt [es:0x4000]
     
     ; Copy VBE parameters to fixed address 0x5000 before entering protected mode
     ; This is necessary because in protected mode with GDT base=0, 
