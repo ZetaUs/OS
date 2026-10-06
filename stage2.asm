@@ -127,6 +127,7 @@ vbe_mode_info: times 256 db 0
 
 bits 32
 protected_mode_entry:
+    cld
     mov ax, 0x10
     mov ds, ax
     mov es, ax

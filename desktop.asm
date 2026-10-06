@@ -18,6 +18,12 @@ _desktop_screen:
     push ebx
     push esi
     push edi
+    cld
+
+    mov edi, [FRAMEBUFFER_PTR]
+    mov ecx, SCREEN_WIDTH * SCREEN_HEIGHT
+    mov eax, [desktop_vga_palette + 4]
+    rep stosd
 
     ; Draw an 800x600 desktop centered in the 1920x1080 framebuffer.
     push dword 1
@@ -136,13 +142,13 @@ _desktop_screen:
     add esp, 20
     push dword 15
     push dword welcome_text
-    push dword 109
+    push dword 129
     push dword 82
     call draw_text
     add esp, 16
     push dword 11
     push dword ready_text
-    push dword 144
+    push dword 147
     push dword 82
     call draw_text
     add esp, 16
