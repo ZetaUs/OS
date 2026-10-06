@@ -1,5 +1,7 @@
 @echo off
 setlocal
+taskkill /f /im qemu-system-x86_64.exe >nul 2>&1
+taskkill /f /im qemu-system-i386.exe >nul 2>&1
 call "%~dp0push.bat"
 set "ROOT=%~dp0.."
 set "NASM=%ROOT%\Program\NASM\nasm.exe"
