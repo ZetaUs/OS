@@ -24,23 +24,23 @@ set "OUT=%~dp0build"
 if not exist "%OUT%" mkdir "%OUT%"
 
 echo [1/8] Assembling boot sector...
-"%NASM%" -I "%~dp0" -f bin "%~dp0boot.asm" -o "%OUT%\boot.bin"
+"%NASM%" -I "%~dp0." -f bin "%~dp0boot.asm" -o "%OUT%\boot.bin"
 if errorlevel 1 exit /b 1
 
 echo [2/8] Assembling stage2...
-"%NASM%" -I "%~dp0" -f bin "%~dp0stage2.asm" -o "%OUT%\stage2.bin"
+"%NASM%" -I "%~dp0." -f bin "%~dp0stage2.asm" -o "%OUT%\stage2.bin"
 if errorlevel 1 exit /b 1
 
 echo [3/8] Assembling login screen...
-"%NASM%" -I "%~dp0" -f win32 "%~dp0login.asm" -o "%OUT%\login.o"
+"%NASM%" -I "%~dp0." -f win32 "%~dp0login.asm" -o "%OUT%\login.o"
 if errorlevel 1 exit /b 1
 
 echo [4/8] Assembling kernel entry...
-"%NASM%" -I "%~dp0" -f win32 "%~dp0kernel_entry.asm" -o "%OUT%\kernel_entry.o"
+"%NASM%" -I "%~dp0." -f win32 "%~dp0kernel_entry.asm" -o "%OUT%\kernel_entry.o"
 if errorlevel 1 exit /b 1
 
 echo [5/8] Assembling desktop screen...
-"%NASM%" -I "%~dp0" -f win32 "%~dp0desktop.asm" -o "%OUT%\desktop.o"
+"%NASM%" -I "%~dp0." -f win32 "%~dp0desktop.asm" -o "%OUT%\desktop.o"
 if errorlevel 1 exit /b 1
 
 echo [6/8] Compiling the freestanding C++ kernel with Dev-C++...
