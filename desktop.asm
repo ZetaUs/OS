@@ -3,7 +3,10 @@ bits 32
 FRAMEBUFFER_PTR equ 0x5000
 SCREEN_WIDTH equ 1920
 SCREEN_HEIGHT equ 1080
-LOGICAL_SCALE equ 6
+VIEWPORT_X equ 560
+VIEWPORT_Y equ 240
+VIEWPORT_WIDTH equ 800
+VIEWPORT_HEIGHT equ 600
 
 global _desktop_screen
 
@@ -16,9 +19,9 @@ _desktop_screen:
     push esi
     push edi
 
-    ; Blue wallpaper with a layered horizon.
+    ; Draw an 800x600 desktop centered in the 1920x1080 framebuffer.
     push dword 1
-    push dword 200
+    push dword 240
     push dword 320
     push dword 0
     push dword 0
@@ -26,25 +29,25 @@ _desktop_screen:
     add esp, 20
 
     push dword 9
-    push dword 52
+    push dword 72
     push dword 320
-    push dword 126
+    push dword 168
     push dword 0
     call draw_rect
     add esp, 20
 
     push dword 1
-    push dword 35
+    push dword 49
     push dword 320
-    push dword 143
+    push dword 191
     push dword 0
     call draw_rect
     add esp, 20
 
     push dword 3
-    push dword 120
+    push dword 96
     push dword 320
-    push dword 58
+    push dword 96
     push dword 0
     call draw_rect
     add esp, 20
@@ -52,146 +55,146 @@ _desktop_screen:
     ; Header.
     push dword 15
     push dword title_text
-    push dword 8
+    push dword 11
     push dword 8
     call draw_text
     add esp, 16
 
     push dword 11
     push dword subtitle_text
-    push dword 8
+    push dword 11
     push dword 216
     call draw_text
     add esp, 16
 
     ; Computer icon.
     push dword 15
-    push dword 26
-    push dword 30
-    push dword 21
-    push dword 12
+    push dword 35
+    push dword 40
+    push dword 28
+    push dword 16
     call draw_rect
     add esp, 20
     push dword 9
-    push dword 22
-    push dword 22
-    push dword 23
-    push dword 16
+    push dword 29
+    push dword 29
+    push dword 31
+    push dword 21
     call draw_rect
     add esp, 20
     push dword 7
-    push dword 3
-    push dword 10
-    push dword 26
-    push dword 22
+    push dword 4
+    push dword 13
+    push dword 35
+    push dword 29
     call draw_rect
     add esp, 20
     push dword 15
-    push dword 2
-    push dword 16
-    push dword 31
-    push dword 19
+    push dword 3
+    push dword 21
+    push dword 41
+    push dword 24
     call draw_rect
     add esp, 20
 
     push dword 15
     push dword computer_label
-    push dword 59
+    push dword 79
     push dword 12
     call draw_text
     add esp, 16
 
     ; Folder icon.
     push dword 14
-    push dword 6
-    push dword 27
-    push dword 92
-    push dword 14
+    push dword 8
+    push dword 36
+    push dword 123
+    push dword 19
     call draw_rect
     add esp, 20
     push dword 6
-    push dword 24
-    push dword 29
-    push dword 96
-    push dword 12
+    push dword 32
+    push dword 39
+    push dword 128
+    push dword 16
     call draw_rect
     add esp, 20
     push dword 14
     push dword folder_label
-    push dword 124
+    push dword 165
     push dword 12
     call draw_text
     add esp, 16
 
     ; A small centered welcome panel.
     push dword 8
-    push dword 60
+    push dword 80
     push dword 170
-    push dword 91
-    push dword 74
+    push dword 121
+    push dword 92
     call draw_rect
     add esp, 20
     push dword 15
     push dword welcome_text
-    push dword 91
+    push dword 109
     push dword 82
     call draw_text
     add esp, 16
     push dword 11
     push dword ready_text
-    push dword 108
+    push dword 144
     push dword 82
     call draw_text
     add esp, 16
 
     ; Taskbar.
     push dword 8
-    push dword 22
+    push dword 27
     push dword 320
-    push dword 158
+    push dword 213
     push dword 0
     call draw_rect
     add esp, 20
     push dword 15
-    push dword 1
+    push dword 2
     push dword 320
-    push dword 158
+    push dword 213
     push dword 0
     call draw_rect
     add esp, 20
 
     ; Start button.
     push dword 1
-    push dword 16
+    push dword 21
     push dword 58
-    push dword 161
+    push dword 217
     push dword 5
     call draw_rect
     add esp, 20
     push dword 15
     push dword start_text
-    push dword 166
+    push dword 221
     push dword 14
     call draw_text
     add esp, 16
 
     push dword 15
     push dword taskbar_text
-    push dword 166
+    push dword 221
     push dword 76
     call draw_text
     add esp, 16
 
     push dword 7
-    push dword 16
+    push dword 21
     push dword 49
-    push dword 164
+    push dword 219
     push dword 265
     call draw_rect
     add esp, 20
     push dword 15
     push dword clock_text
-    push dword 168
+    push dword 224
     push dword 270
     call draw_text
     add esp, 16
@@ -206,6 +209,7 @@ _desktop_screen:
 draw_rect:
     push ebp
     mov ebp, esp
+    sub esp, 8
     push ebx
     push ecx
     push edx
@@ -213,13 +217,27 @@ draw_rect:
     push edi
 
     mov eax, [ebp+8]
-    imul eax, LOGICAL_SCALE
+    imul eax, 5
+    shr eax, 1
+    add eax, VIEWPORT_X
+    mov [ebp-4], eax
     mov ebx, [ebp+12]
-    imul ebx, LOGICAL_SCALE
-    mov ecx, [ebp+16]
-    imul ecx, LOGICAL_SCALE
-    mov edx, [ebp+20]
-    imul edx, LOGICAL_SCALE
+    imul ebx, 5
+    shr ebx, 1
+    add ebx, VIEWPORT_Y
+    mov [ebp-8], ebx
+    mov ecx, [ebp+8]
+    add ecx, [ebp+16]
+    imul ecx, 5
+    shr ecx, 1
+    add ecx, VIEWPORT_X
+    sub ecx, eax
+    mov edx, [ebp+12]
+    add edx, [ebp+20]
+    imul edx, 5
+    shr edx, 1
+    add edx, VIEWPORT_Y
+    sub edx, ebx
     mov esi, [ebp+24]
     and esi, 0x0F
     mov esi, [desktop_vga_palette + esi * 4]
@@ -227,24 +245,25 @@ draw_rect:
     jz .rect_done
     test edx, edx
     jz .rect_done
-    cmp eax, SCREEN_WIDTH
+    cmp dword [ebp-4], SCREEN_WIDTH
     jae .rect_done
-    cmp ebx, SCREEN_HEIGHT
+    cmp dword [ebp-8], SCREEN_HEIGHT
     jae .rect_done
     mov edi, SCREEN_WIDTH
-    sub edi, eax
+    sub edi, [ebp-4]
     cmp ecx, edi
     jbe .rect_width_ok
     mov ecx, edi
 .rect_width_ok:
     mov edi, SCREEN_HEIGHT
-    sub edi, ebx
+    sub edi, [ebp-8]
     cmp edx, edi
     jbe .rect_height_ok
     mov edx, edi
 .rect_height_ok:
+    mov ebx, [ebp-8]
     imul ebx, SCREEN_WIDTH
-    add ebx, eax
+    add ebx, [ebp-4]
     shl ebx, 2
     add ebx, [FRAMEBUFFER_PTR]
 .rect_row:
@@ -263,6 +282,7 @@ draw_rect:
     pop edx
     pop ecx
     pop ebx
+    add esp, 8
     pop ebp
     ret
 
