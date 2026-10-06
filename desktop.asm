@@ -521,11 +521,11 @@ desktop_hit_test:
 .check_icons:
     cmp dword [desktop_mouse_x], 24
     jl .check_files_icon
-    cmp dword [desktop_mouse_x], 450
+    cmp dword [desktop_mouse_x], 165
     jg .check_files_icon
     cmp dword [desktop_mouse_y], 40
     jl .check_files_icon
-    cmp dword [desktop_mouse_y], 270
+    cmp dword [desktop_mouse_y], 186
     jg .check_files_icon
 .open_pc:
     mov byte [desktop_window], 1
@@ -534,24 +534,24 @@ desktop_hit_test:
     ret
 
 .check_files_icon:
-    cmp dword [desktop_mouse_x], 24
+    cmp dword [desktop_mouse_x], 300
     jl .check_files_label
-    cmp dword [desktop_mouse_x], 180
+    cmp dword [desktop_mouse_x], 468
     jg .check_files_label
-    cmp dword [desktop_mouse_y], 300
+    cmp dword [desktop_mouse_y], 120
     jl .check_files_label
-    cmp dword [desktop_mouse_y], 415
+    cmp dword [desktop_mouse_y], 276
     jg .check_files_label
     jmp .open_files
 
 .check_files_label:
-    cmp dword [desktop_mouse_x], 24
+    cmp dword [desktop_mouse_x], 312
     jl .no_action
-    cmp dword [desktop_mouse_x], 190
+    cmp dword [desktop_mouse_x], 448
     jg .no_action
-    cmp dword [desktop_mouse_y], 420
+    cmp dword [desktop_mouse_y], 276
     jl .no_action
-    cmp dword [desktop_mouse_y], 480
+    cmp dword [desktop_mouse_y], 310
     jg .no_action
 .open_files:
     mov byte [desktop_window], 2
