@@ -806,7 +806,7 @@ draw_text:
     push ebx
     call draw_char
     add esp, 16
-    add ebx, 8
+    add ebx, 16
     inc esi
     jmp .text_next
 .text_done:
@@ -826,9 +826,7 @@ draw_text_small:
     push esi
     mov dword [desktop_rect_scale], 2
     mov ebx, [ebp+8]
-    imul ebx, 3
     mov edx, [ebp+12]
-    imul edx, 3
     mov esi, [ebp+16]
 .small_text_next:
     movzx eax, byte [esi]
@@ -873,7 +871,11 @@ draw_char:
     jb .char_check_digit
     cmp al, 'z'
     ja .char_check_digit
-    sub al, 'a' - 'A'
+    sub al, 'a'
+    movzx ebx, al
+    shl ebx, 3
+    add ebx, lowercase_font_data
+    jmp .char_draw
 .char_upper:
     sub al, 'A'
     movzx ebx, al
