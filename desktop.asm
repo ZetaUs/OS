@@ -222,7 +222,7 @@ draw_rect:
     imul edx, LOGICAL_SCALE
     mov esi, [ebp+24]
     and esi, 0x0F
-    mov esi, [vga_palette + esi * 4]
+    mov esi, [desktop_vga_palette + esi * 4]
     test ecx, ecx
     jz .rect_done
     test edx, edx
@@ -396,6 +396,7 @@ draw_char:
 
 section .data
     %include "vga_palette.inc"
+    VGA_PALETTE_TABLE desktop_vga_palette
     title_text: db 'NOVA DESKTOP', 0
     subtitle_text: db 'WELCOME', 0
     computer_label: db 'MY PC', 0

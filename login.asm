@@ -373,7 +373,7 @@ draw_rect:
     imul edx, LOGICAL_SCALE
     mov esi, [ebp+24]
     and esi, 0x0F
-    mov esi, [vga_palette + esi * 4]
+    mov esi, [login_vga_palette + esi * 4]
     cmp eax, SCREEN_WIDTH
     jae .rect_done
     cmp ebx, SCREEN_HEIGHT
@@ -502,7 +502,7 @@ draw_logical_pixel:
     add ebx, [FRAMEBUFFER_PTR]
     mov eax, [ebp+16]
     and eax, 0x0F
-    mov esi, [vga_palette + eax * 4]
+    mov esi, [login_vga_palette + eax * 4]
     mov edx, LOGICAL_SCALE
 .logical_pixel_row:
     mov edi, ebx
@@ -523,6 +523,7 @@ draw_logical_pixel:
 
 section .data
     %include "vga_palette.inc"
+    VGA_PALETTE_TABLE login_vga_palette
 
     ; 登 expanded bitmap (12x12 = 144 bytes, 0 or 1)
     deng_expanded: db 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0
