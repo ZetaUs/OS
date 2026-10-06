@@ -123,9 +123,11 @@ start:
     mov eax, cr0
     or eax, 1
     mov cr0, eax
-    ; Far jump to protected mode entry at absolute physical address
-    ; stage2 is loaded at 0x7E00, so we need to add 0x7E00 to the offset
-    jmp dword 0x08:0x7E00 + protected_mode_entry - start
+    ; Use retf for far jump to protected mode entry
+    ; This is more reliable than jmp dword in some assemblers
+    push 0x08
+    push dword (0x7E00 + protected_mode_entry - start)
+    retf
 
 vbe_error:
     mov si, vbe_error_message
