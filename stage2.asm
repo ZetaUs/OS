@@ -219,14 +219,19 @@ protected_mode_entry:
     mov [0x5010], eax
 
 continue_boot:
+    ; Test: Simple infinite loop to verify protected mode works
+    ; Comment this out and uncomment the kernel call below to test kernel
+.test_loop:
+    jmp .test_loop
+    
     ; Call the kernel (32-bit protected mode) with 5 parameters
-    push dword [0x5010]  ; bpp
-    push dword [0x500C]  ; pitch
-    push dword [0x5008]  ; height
-    push dword [0x5004]  ; width
-    push dword [0x5000]  ; framebuffer_base
-    call 0x10000
-    add esp, 20
+    ; push dword [0x5010]  ; bpp
+    ; push dword [0x500C]  ; pitch
+    ; push dword [0x5008]  ; height
+    ; push dword [0x5004]  ; width
+    ; push dword [0x5000]  ; framebuffer_base
+    ; call 0x10000
+    ; add esp, 20
 
 halt_kernel:
     cli
