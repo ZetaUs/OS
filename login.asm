@@ -396,8 +396,6 @@ draw_rect:
     add ebx, [FRAMEBUFFER_PTR]
 .draw_rect_row:
     push ecx
-    mov ecx, [ebp+16]
-    imul ecx, LOGICAL_SCALE
     mov eax, esi
     mov edi, ebx
 .draw_rect_column:
