@@ -3,10 +3,11 @@ bits 32
 FRAMEBUFFER_PTR equ 0x5000
 SCREEN_WIDTH equ 1920
 SCREEN_HEIGHT equ 1080
-VIEWPORT_X equ 560
-VIEWPORT_Y equ 240
-VIEWPORT_WIDTH equ 800
-VIEWPORT_HEIGHT equ 600
+VIEWPORT_X equ 0
+VIEWPORT_Y equ 0
+VIEWPORT_WIDTH equ 320
+VIEWPORT_HEIGHT equ 180
+LOGICAL_SCALE equ 6
 
 global _desktop_screen
 
@@ -79,68 +80,68 @@ desktop_draw_scene:
 
     mov edi, [FRAMEBUFFER_PTR]
     mov ecx, SCREEN_WIDTH * SCREEN_HEIGHT
-    mov eax, [desktop_vga_palette + 4]
+    mov eax, [desktop_vga_palette + 9 * 4]
     rep stosd
 
-    ; Draw an 800x600 Windows-inspired desktop in the centered viewport.
+    ; Fill the full-screen logical desktop with a Windows-inspired blue field.
     push dword 9
-    push dword 240
+    push dword VIEWPORT_HEIGHT
     push dword 320
     push dword 0
     push dword 0
     call draw_rect
     add esp, 20
 
-    ; Layered blue bands make a simple lighted wallpaper.
+    ; Layered blue panels create a subtle geometric glow behind the logo.
     push dword 1
-    push dword 82
-    push dword 130
+    push dword 180
+    push dword 120
     push dword 0
-    push dword 190
+    push dword 0
     call draw_rect
     add esp, 20
     push dword 1
-    push dword 78
-    push dword 145
-    push dword 82
-    push dword 175
+    push dword 110
+    push dword 100
+    push dword 0
+    push dword 120
     call draw_rect
     add esp, 20
     push dword 1
-    push dword 62
-    push dword 160
-    push dword 160
-    push dword 160
+    push dword 50
+    push dword 100
+    push dword 110
+    push dword 220
     call draw_rect
     add esp, 20
 
-    ; Four-pane window mark.
+    ; Four-pane wallpaper mark sits in the open right half.
     push dword 11
-    push dword 36
-    push dword 38
-    push dword 72
-    push dword 198
+    push dword 22
+    push dword 22
+    push dword 55
+    push dword 202
     call draw_rect
     add esp, 20
     push dword 3
-    push dword 36
-    push dword 38
-    push dword 72
-    push dword 241
+    push dword 22
+    push dword 22
+    push dword 55
+    push dword 228
     call draw_rect
     add esp, 20
     push dword 3
-    push dword 36
-    push dword 38
-    push dword 114
-    push dword 196
+    push dword 22
+    push dword 22
+    push dword 81
+    push dword 201
     call draw_rect
     add esp, 20
     push dword 11
-    push dword 36
-    push dword 38
-    push dword 114
-    push dword 239
+    push dword 22
+    push dword 22
+    push dword 81
+    push dword 227
     call draw_rect
     add esp, 20
 
@@ -205,18 +206,18 @@ desktop_draw_scene:
     call desktop_draw_window
     call desktop_draw_start_menu
 
-    ; Windows-style taskbar.
+    ; Windows-style taskbar anchored to the bottom edge.
     push dword 8
     push dword 18
     push dword 320
-    push dword 222
+    push dword 162
     push dword 0
     call draw_rect
     add esp, 20
     push dword 7
     push dword 1
     push dword 320
-    push dword 222
+    push dword 162
     push dword 0
     call draw_rect
     add esp, 20
@@ -225,7 +226,7 @@ desktop_draw_scene:
     push dword 8
     push dword 17
     push dword 20
-    push dword 223
+    push dword 163
     push dword 0
     call draw_rect
     add esp, 20
@@ -262,14 +263,14 @@ desktop_draw_scene:
     push dword 7
     push dword 14
     push dword 88
-    push dword 224
-    push dword 20
+    push dword 163
+    push dword 12
     call draw_rect
     add esp, 20
     push dword 0
     push dword search_text
-    push dword 228
-    push dword 29
+    push dword 167
+    push dword 21
     call draw_text
     add esp, 16
 
@@ -277,15 +278,15 @@ desktop_draw_scene:
     push dword 6
     push dword 7
     push dword 13
-    push dword 227
-    push dword 120
+    push dword 165
+    push dword 116
     call draw_rect
     add esp, 20
     push dword 14
     push dword 2
     push dword 8
-    push dword 225
-    push dword 122
+    push dword 163
+    push dword 118
     call draw_rect
     add esp, 20
 
@@ -293,13 +294,13 @@ desktop_draw_scene:
     push dword 8
     push dword 16
     push dword 42
-    push dword 223
+    push dword 163
     push dword 278
     call draw_rect
     add esp, 20
     push dword 15
     push dword clock_text
-    push dword 228
+    push dword 167
     push dword 279
     call draw_text
     add esp, 16
@@ -387,32 +388,32 @@ desktop_draw_start_menu:
     push dword 8
     push dword 68
     push dword 104
-    push dword 143
+    push dword 92
     push dword 4
     call draw_rect
     add esp, 20
     push dword 1
     push dword 16
     push dword 100
-    push dword 147
+    push dword 96
     push dword 6
     call draw_rect
     add esp, 20
     push dword 15
     push dword menu_title
-    push dword 151
+    push dword 99
     push dword 10
     call draw_text
     add esp, 16
     push dword 15
     push dword pc_menu_item
-    push dword 169
+    push dword 117
     push dword 12
     call draw_text
     add esp, 16
     push dword 15
     push dword files_menu_item
-    push dword 188
+    push dword 137
     push dword 12
     call draw_text
     add esp, 16
@@ -487,17 +488,21 @@ desktop_update_mouse:
 desktop_hit_test:
     cmp byte [desktop_start_open], 0
     je .check_start_button
-    cmp dword [desktop_mouse_x], 570
+    cmp dword [desktop_mouse_x], 24
     jl .close_menu_outside
-    cmp dword [desktop_mouse_x], 830
+    cmp dword [desktop_mouse_x], 648
     jg .close_menu_outside
-    cmp dword [desktop_mouse_y], 650
+    cmp dword [desktop_mouse_y], 552
     jl .close_menu_outside
+    cmp dword [desktop_mouse_y], 660
+    jle .close_menu_outside
     cmp dword [desktop_mouse_y], 690
-    jle .open_pc
-    cmp dword [desktop_mouse_y], 695
     jl .close_menu_outside
-    cmp dword [desktop_mouse_y], 740
+    cmp dword [desktop_mouse_y], 780
+    jle .open_pc
+    cmp dword [desktop_mouse_y], 810
+    jl .close_menu_outside
+    cmp dword [desktop_mouse_y], 900
     jle .open_files
 .close_menu_outside:
     mov byte [desktop_start_open], 0
@@ -505,11 +510,11 @@ desktop_hit_test:
     ret
 
 .check_start_button:
-    cmp dword [desktop_mouse_x], 560
+    cmp dword [desktop_mouse_x], 0
     jl .check_window
-    cmp dword [desktop_mouse_x], 612
+    cmp dword [desktop_mouse_x], 120
     jg .check_window
-    cmp dword [desktop_mouse_y], 785
+    cmp dword [desktop_mouse_y], 978
     jl .check_window
     cmp dword [desktop_mouse_y], 840
     jg .check_window
@@ -522,26 +527,26 @@ desktop_hit_test:
 .check_window:
     cmp byte [desktop_window], 0
     je .check_icons
-    cmp dword [desktop_mouse_x], 1125
+    cmp dword [desktop_mouse_x], 1300
     jl .check_icons
-    cmp dword [desktop_mouse_x], 1175
+    cmp dword [desktop_mouse_x], 1450
     jg .check_icons
-    cmp dword [desktop_mouse_y], 402
+    cmp dword [desktop_mouse_y], 410
     jl .check_icons
-    cmp dword [desktop_mouse_y], 442
+    cmp dword [desktop_mouse_y], 510
     jg .check_icons
     mov byte [desktop_window], 0
     mov eax, 1
     ret
 
 .check_icons:
-    cmp dword [desktop_mouse_x], 570
+    cmp dword [desktop_mouse_x], 24
     jl .check_files_icon
-    cmp dword [desktop_mouse_x], 710
+    cmp dword [desktop_mouse_x], 180
     jg .check_files_icon
-    cmp dword [desktop_mouse_y], 260
+    cmp dword [desktop_mouse_y], 40
     jl .check_files_icon
-    cmp dword [desktop_mouse_y], 350
+    cmp dword [desktop_mouse_y], 240
     jg .check_files_icon
 .open_pc:
     mov byte [desktop_window], 1
@@ -550,24 +555,24 @@ desktop_hit_test:
     ret
 
 .check_files_icon:
-    cmp dword [desktop_mouse_x], 570
+    cmp dword [desktop_mouse_x], 24
     jl .check_files_label
-    cmp dword [desktop_mouse_x], 660
+    cmp dword [desktop_mouse_x], 180
     jg .check_files_label
-    cmp dword [desktop_mouse_y], 355
+    cmp dword [desktop_mouse_y], 300
     jl .check_files_label
-    cmp dword [desktop_mouse_y], 440
+    cmp dword [desktop_mouse_y], 415
     jg .check_files_label
     jmp .open_files
 
 .check_files_label:
-    cmp dword [desktop_mouse_x], 570
+    cmp dword [desktop_mouse_x], 24
     jl .no_action
-    cmp dword [desktop_mouse_x], 675
+    cmp dword [desktop_mouse_x], 190
     jg .no_action
-    cmp dword [desktop_mouse_y], 405
+    cmp dword [desktop_mouse_y], 420
     jl .no_action
-    cmp dword [desktop_mouse_y], 450
+    cmp dword [desktop_mouse_y], 480
     jg .no_action
 .open_files:
     mov byte [desktop_window], 2
@@ -672,25 +677,21 @@ draw_rect:
     push edi
 
     mov eax, [ebp+8]
-    imul eax, 5
-    shr eax, 1
+    imul eax, LOGICAL_SCALE
     add eax, VIEWPORT_X
     mov [ebp-4], eax
     mov ebx, [ebp+12]
-    imul ebx, 5
-    shr ebx, 1
+    imul ebx, LOGICAL_SCALE
     add ebx, VIEWPORT_Y
     mov [ebp-8], ebx
     mov ecx, [ebp+8]
     add ecx, [ebp+16]
-    imul ecx, 5
-    shr ecx, 1
+    imul ecx, LOGICAL_SCALE
     add ecx, VIEWPORT_X
     sub ecx, eax
     mov edx, [ebp+12]
     add edx, [ebp+20]
-    imul edx, 5
-    shr edx, 1
+    imul edx, LOGICAL_SCALE
     add edx, VIEWPORT_Y
     sub edx, ebx
     mov esi, [ebp+24]
