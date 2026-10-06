@@ -170,10 +170,14 @@ protected_mode_entry:
     mov dword [0x5008], 1080
     mov dword [0x500C], 7680
 
-    mov eax, 0x10000
+    push dword 32
+    push dword 7680
+    push dword 1080
+    push dword 1920
     push dword [0x5000]
+    mov eax, 0x1003E
     call eax
-    add esp, 4
+    add esp, 20
 
 kernel_halt:
     cli
