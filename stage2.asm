@@ -94,6 +94,20 @@ start:
     cli
     lgdt [gdt_descriptor]
     
+    ; Copy VBE parameters to fixed address 0x5000 before entering protected mode
+    ; This is necessary because in protected mode with GDT base=0, 
+    ; variable addresses would be wrong
+    mov eax, [framebuffer_base]
+    mov [0x5000], eax
+    mov eax, [vbe_width]
+    mov [0x5004], eax
+    mov eax, [vbe_height]
+    mov [0x5008], eax
+    movzx eax, word [vbe_pitch]
+    mov [0x500C], eax
+    movzx eax, byte [vbe_bpp]
+    mov [0x5010], eax
+    
     ; Display protected mode message
     mov si, prot_mode_msg
     call print_string
@@ -153,20 +167,10 @@ print_string:
 align 8
 gdt_start:
     dq 0
-    ; 32-bit code segment (base=0x7E00, limit=4GB)
-    dw 0xFFFF        ; Limit (15:0)
-    dw 0x7E00        ; Base (15:0)
-    db 0x00          ; Base (23:16)
-    db 0x9A          ; Access (code, readable, accessed)
-    db 0xCF          ; Flags (G=1, D=1) + Limit (19:16)
-    db 0x00          ; Base (31:24)
-    ; 32-bit data segment (base=0x7E00, limit=4GB)
-    dw 0xFFFF        ; Limit (15:0)
-    dw 0x7E00        ; Base (15:0)
-    db 0x00          ; Base (23:16)
-    db 0x92          ; Access (data, writable, accessed)
-    db 0xCF          ; Flags (G=1, D=1) + Limit (19:16)
-    db 0x00          ; Base (31:24)
+    ; 32-bit code segment (base=0, limit=4GB)
+    dq 0x00CF9A000000FFFF
+    ; 32-bit data segment (base=0, limit=4GB)
+    dq 0x00CF92000000FFFF
 gdt_end:
 
 gdt_descriptor:
@@ -216,17 +220,8 @@ protected_mode_entry:
     mov ss, ax
     mov esp, 0x90000
 
-    ; Store VBE parameters for kernel
-    mov eax, [framebuffer_base]
-    mov [0x5000], eax
-    mov eax, [vbe_width]
-    mov [0x5004], eax
-    mov eax, [vbe_height]
-    mov [0x5008], eax
-    movzx eax, word [vbe_pitch]
-    mov [0x500C], eax
-    movzx eax, byte [vbe_bpp]
-    mov [0x5010], eax
+    ; VBE parameters are already at 0x5000-0x5010 from real mode
+    ; No need to copy again
 
 continue_boot:
     ; Test: Simple infinite loop to verify protected mode works
