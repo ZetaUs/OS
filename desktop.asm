@@ -502,7 +502,7 @@ desktop_hit_test:
     jg .check_files_icon
     cmp dword [desktop_mouse_y], 300
     jl .check_files_icon
-    cmp dword [desktop_mouse_y], 390
+    cmp dword [desktop_mouse_y], 465
     jg .check_files_icon
 .open_pc:
     mov byte [desktop_window], 1
@@ -511,13 +511,13 @@ desktop_hit_test:
     ret
 
 .check_files_icon:
-    cmp dword [desktop_mouse_x], 850
+    cmp dword [desktop_mouse_x], 590
     jl .check_files_label
-    cmp dword [desktop_mouse_x], 975
+    cmp dword [desktop_mouse_x], 715
     jg .check_files_label
-    cmp dword [desktop_mouse_y], 320
+    cmp dword [desktop_mouse_y], 535
     jl .check_files_label
-    cmp dword [desktop_mouse_y], 390
+    cmp dword [desktop_mouse_y], 650
     jg .check_files_label
     jmp .open_files
 
