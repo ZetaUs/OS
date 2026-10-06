@@ -137,19 +137,19 @@ _desktop_screen:
     push dword 80
     push dword 170
     push dword 121
-    push dword 92
+    push dword 74
     call draw_rect
     add esp, 20
     push dword 15
     push dword welcome_text
     push dword 129
-    push dword 82
+    push dword 131
     call draw_text
     add esp, 16
     push dword 11
     push dword ready_text
     push dword 147
-    push dword 82
+    push dword 107
     call draw_text
     add esp, 16
 
