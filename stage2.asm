@@ -165,10 +165,10 @@ gdt_descriptor:
 
 kernel_dap:
     db 0x10, 0
-    dw 64
+    dw 128
     dw 0
     dw 0x1000
-    dd 9
+    dd 18
     dd 0
 
 hzk_dap:
