@@ -135,8 +135,8 @@ desktop_draw_scene:
     call desktop_draw_explorer_icon
     push dword 14
     push dword explorer_label
-    push dword 141
-    push dword 160
+    push dword 177
+    push dword 28
     call draw_text_small
     add esp, 16
 
@@ -242,10 +242,10 @@ desktop_draw_explorer_icon:
     push dword 1
     push dword 1
     mov eax, esi
-    add eax, 22
+    add eax, 34
     push eax
     mov eax, edi
-    add eax, 52
+    add eax, 8
     push eax
     call draw_rect
     add esp, 20
@@ -571,24 +571,24 @@ desktop_hit_test:
     ret
 
 .check_files_icon:
-    cmp dword [desktop_mouse_x], 300
+    cmp dword [desktop_mouse_x], 48
     jl .check_files_label
-    cmp dword [desktop_mouse_x], 468
+    cmp dword [desktop_mouse_x], 192
     jg .check_files_label
-    cmp dword [desktop_mouse_y], 120
+    cmp dword [desktop_mouse_y], 204
     jl .check_files_label
-    cmp dword [desktop_mouse_y], 276
+    cmp dword [desktop_mouse_y], 348
     jg .check_files_label
     jmp .open_files
 
 .check_files_label:
-    cmp dword [desktop_mouse_x], 312
+    cmp dword [desktop_mouse_x], 56
     jl .no_action
-    cmp dword [desktop_mouse_x], 448
+    cmp dword [desktop_mouse_x], 184
     jg .no_action
-    cmp dword [desktop_mouse_y], 276
+    cmp dword [desktop_mouse_y], 348
     jl .no_action
-    cmp dword [desktop_mouse_y], 310
+    cmp dword [desktop_mouse_y], 382
     jg .no_action
 .open_files:
     mov byte [desktop_window], 2
