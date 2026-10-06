@@ -32,6 +32,7 @@ _login_screen:
     mov dword [g_mouse_y], 540
     mov byte [mouse_packet_stage], 0
     mov byte [mouse_buttons], 0
+    mov byte [cursor_drawn], 0
     call mouse_init
     mov [mouse_available], al
 
@@ -299,7 +300,6 @@ update_mouse:
     jmp .update_done
 
 .redraw_mouse:
-    call draw_login_scene
     call draw_mouse_cursor
     xor eax, eax
 
@@ -316,6 +316,39 @@ draw_mouse_cursor:
     push edx
     push esi
     push edi
+
+    cmp byte [cursor_drawn], 0
+    je .draw_new_cursor
+
+    mov edi, [cursor_prev_y]
+    imul edi, SCREEN_WIDTH
+    add edi, [cursor_prev_x]
+    shl edi, 2
+    add edi, [FRAMEBUFFER_PTR]
+    xor ebx, ebx
+.restore_cursor_row:
+    mov ecx, MOUSE_WIDTH
+    xor esi, esi
+.restore_cursor_column:
+    mov eax, ebx
+    imul eax, MOUSE_WIDTH
+    add eax, esi
+    mov eax, [cursor_saved + eax * 4]
+    mov [edi], eax
+    add edi, 4
+    inc esi
+    dec ecx
+    jnz .restore_cursor_column
+    add edi, SCREEN_WIDTH * 4 - MOUSE_WIDTH * 4
+    inc ebx
+    cmp ebx, MOUSE_HEIGHT
+    jl .restore_cursor_row
+
+.draw_new_cursor:
+    mov eax, [g_mouse_x]
+    mov [cursor_prev_x], eax
+    mov eax, [g_mouse_y]
+    mov [cursor_prev_y], eax
     mov edi, [g_mouse_y]
     imul edi, SCREEN_WIDTH
     add edi, [g_mouse_x]
@@ -326,13 +359,17 @@ draw_mouse_cursor:
     mov ecx, MOUSE_WIDTH
     xor esi, esi
 .cursor_column:
+    mov eax, [edi]
+    mov edx, ebx
+    imul edx, MOUSE_WIDTH
+    add edx, esi
+    mov [cursor_saved + edx * 4], eax
     mov eax, ebx
     imul eax, MOUSE_WIDTH
     add eax, esi
-    mov al, [mouse_data + eax]
+    movzx eax, byte [mouse_data + eax]
     test al, al
     je .cursor_skip
-    movzx eax, al
     mov eax, [login_vga_palette + eax * 4]
     mov [edi], eax
 .cursor_skip:
@@ -344,6 +381,7 @@ draw_mouse_cursor:
     inc ebx
     cmp ebx, MOUSE_HEIGHT
     jl .cursor_row
+    mov byte [cursor_drawn], 1
     pop edi
     pop esi
     pop edx
@@ -555,7 +593,11 @@ section .data
 section .bss
     g_mouse_x resd 1
     g_mouse_y resd 1
+    cursor_prev_x resd 1
+    cursor_prev_y resd 1
     mouse_packet resb 3
     mouse_packet_stage resb 1
     mouse_buttons resb 1
     mouse_available resb 1
+    cursor_drawn resb 1
+    cursor_saved resd MOUSE_WIDTH * MOUSE_HEIGHT
