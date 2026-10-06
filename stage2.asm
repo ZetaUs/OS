@@ -206,6 +206,7 @@ protected_mode_entry:
     mov ss, ax
     mov esp, 0x90000
 
+    ; Store VBE parameters for kernel
     mov eax, [framebuffer_base]
     mov [0x5000], eax
     mov eax, [vbe_width]
@@ -218,7 +219,6 @@ protected_mode_entry:
     mov [0x5010], eax
 
 continue_boot:
-
     ; Call the kernel (32-bit protected mode) with 5 parameters
     push dword [0x5010]  ; bpp
     push dword [0x500C]  ; pitch
