@@ -20,9 +20,9 @@ start:
     mov ax, 0x0013
     int 0x10
 
-    ; Try VBE mode 0x112 (640x480x16) - most compatible with QEMU
+    ; Try VBE mode 0x115 (800x600x24) - best quality supported in QEMU
     mov ax, 0x4F01
-    mov cx, 0x0112
+    mov cx, 0x0115
     mov di, vbe_mode_info
     int 0x10
     cmp ax, 0x004F
@@ -33,9 +33,9 @@ start:
     jnz .mode_found
 
 .try_next_mode:
-    ; Try VBE mode 0x101 (640x480x8) as fallback
+    ; Try VBE mode 0x112 (640x480x24) as fallback
     mov ax, 0x4F01
-    mov cx, 0x0101
+    mov cx, 0x0112
     mov di, vbe_mode_info
     int 0x10
     cmp ax, 0x004F
