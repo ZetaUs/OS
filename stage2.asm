@@ -11,6 +11,12 @@ start:
     mov [boot_drive], dl
     sti
 
+    ; Set DS to 0x07E0 so that [label] addresses resolve to 0x7E00+offset
+    ; This is critical for lgdt and other memory accesses
+    mov ax, 0x07E0
+    mov ds, ax
+    mov es, ax
+
     ; Enable A20 line (fast method via keyboard controller)
     in al, 0x92
     or al, 2
