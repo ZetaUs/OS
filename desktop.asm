@@ -1,8 +1,10 @@
-bits 32
+default rel
+bits 64
 
 FRAMEBUFFER_PTR equ 0x5000
 SCREEN_WIDTH equ 1920
 SCREEN_HEIGHT equ 1080
+SCREEN_PITCH equ 7680
 VIEWPORT_X equ 0
 VIEWPORT_Y equ 0
 VIEWPORT_WIDTH equ 320
@@ -14,20 +16,20 @@ global _desktop_screen
 section .text
 
 _desktop_screen:
-    push ebp
-    mov ebp, esp
-    push ebx
-    push esi
-    push edi
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push rsi
+    push rdi
     cld
 
-    mov dword [desktop_mouse_x], 960
-    mov dword [desktop_mouse_y], 500
-    mov byte [desktop_packet_stage], 0
-    mov byte [desktop_mouse_buttons], 0
-    mov byte [desktop_cursor_drawn], 0
-    mov byte [desktop_window], 0
-    mov byte [desktop_start_open], 0
+    mov dword [rel desktop_mouse_x], 960
+    mov dword [rel desktop_mouse_y], 500
+    mov byte [rel desktop_packet_stage], 0
+    mov byte [rel desktop_mouse_buttons], 0
+    mov byte [rel desktop_cursor_drawn], 0
+    mov byte [rel desktop_window], 0
+    mov byte [rel desktop_start_open], 0
     call desktop_draw_scene
     call desktop_draw_cursor
 
@@ -40,33 +42,33 @@ _desktop_screen:
     test ah, 0x20
     jz .desktop_keyboard
 
-    mov bl, [desktop_packet_stage]
+    mov bl, [rel desktop_packet_stage]
     cmp bl, 0
     je .desktop_first_byte
     cmp bl, 1
     je .desktop_x_byte
-    mov [desktop_packet + 2], al
-    mov byte [desktop_packet_stage], 0
+    mov [rel desktop_packet + 2], al
+    mov byte [rel desktop_packet_stage], 0
     call desktop_update_mouse
     jmp .desktop_input
 
 .desktop_first_byte:
     test al, 0x08
     jz .desktop_input
-    mov [desktop_packet], al
-    mov byte [desktop_packet_stage], 1
+    mov [rel desktop_packet], al
+    mov byte [rel desktop_packet_stage], 1
     jmp .desktop_input
 
 .desktop_x_byte:
-    mov [desktop_packet + 1], al
-    mov byte [desktop_packet_stage], 2
+    mov [rel desktop_packet + 1], al
+    mov byte [rel desktop_packet_stage], 2
     jmp .desktop_input
 
 .desktop_keyboard:
     cmp al, 0x01
     jne .desktop_input
-    mov byte [desktop_window], 0
-    mov byte [desktop_start_open], 0
+    mov byte [rel desktop_window], 0
+    mov byte [rel desktop_start_open], 0
     call desktop_redraw
     jmp .desktop_input
 

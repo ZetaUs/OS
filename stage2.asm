@@ -131,6 +131,12 @@ framebuffer_base: dd 0
 align 4
 vbe_mode_info: times 256 db 0
 
+; Page tables for 64-bit long mode (identity mapping)
+align 4096
+pml4_table: times 4096 db 0
+pdpt_table: times 4096 db 0
+pd_table: times 4096 db 0
+
 bits 32
 protected_mode_entry:
     cld
@@ -198,10 +204,50 @@ protected_mode_entry:
     mov dword [0x5004], 1920
     mov dword [0x5008], 1080
     mov dword [0x500C], 7680
-    mov eax, 0x10000
-    push dword [0x5000]
-    call eax
-    add esp, 4
+
+    ; Set up page tables for 64-bit long mode
+    ; PML4[0] -> PDPT
+    mov eax, pdpt_table
+    or eax, 0x03  ; Present + Write
+    mov [pml4_table], eax
+
+    ; PDPT[0] -> PD
+    mov eax, pd_table
+    or eax, 0x03
+    mov [pdpt_table], eax
+
+    ; PD[0-511] -> 2MB pages (identity mapping for first 1GB)
+    mov ecx, 512
+    xor edi, edi
+    mov eax, 0x00000083  ; Present + Write + 2MB page
+.setup_pd:
+    mov [pd_table + edi * 8], eax
+    inc edi
+    add eax, 0x200000
+    loop .setup_pd
+
+    ; Load page table base into CR3
+    mov eax, pml4_table
+    mov cr3, eax
+
+    ; Enable PAE
+    mov eax, cr4
+    or eax, 0x20  ; PAE bit
+    mov cr4, eax
+
+    ; Enable long mode
+    mov ecx, 0xC0000080  ; EFER MSR
+    rdmsr
+    or eax, 0x100  ; LME bit
+    wrmsr
+
+    ; Enable paging
+    mov eax, cr0
+    or eax, 0x80000000  ; PG bit
+    mov cr0, eax
+
+    ; Jump to 64-bit mode
+    jmp 0x18:long_mode_entry
 
 halt_kernel:
     cli
@@ -212,3 +258,32 @@ vbe_protected_error:
     cli
     hlt
     jmp vbe_protected_error
+
+bits 64
+long_mode_entry:
+    ; Set up 64-bit data segments
+    mov ax, 0x20
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    ; Set up 64-bit stack
+    mov rsp, 0x90000
+
+    ; Pass framebuffer info to kernel (via memory)
+    mov rax, [0x5000]
+    mov [0x5000], rax
+    mov dword [0x5008], 1920
+    mov dword [0x500C], 1080
+    mov dword [0x5010], 7680
+
+    ; Call the kernel
+    mov rax, 0x10000
+    call rax
+
+halt_64:
+    cli
+    hlt
+    jmp halt_64

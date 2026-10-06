@@ -1,26 +1,35 @@
 typedef unsigned short uint16_t;
 typedef unsigned char uint8_t;
 typedef unsigned int uint32_t;
+typedef unsigned long long uint64_t;
 typedef signed int int32_t;
 typedef signed char int8_t;
 
+struct FramebufferInfo {
+    uint64_t base;
+    uint32_t width;
+    uint32_t height;
+    uint32_t pitch;
+};
+
 static volatile uint32_t* vram;
+static uint32_t screen_width;
+static uint32_t screen_height;
+static uint32_t screen_pitch;
 static void pixel(uint32_t x, uint32_t y, uint8_t color);
 
 #include "logo_data.h"
 #include "load_data.h"
 
-static const uint32_t screen_width = 1920;
-static const uint32_t screen_height = 1080;
 static const uint32_t logical_width = 320;
 static const uint32_t logical_height = 180;
 static const uint32_t scale = 6;
 
 static const uint32_t colors[16] = {
-    0x000000, 0x0000AA, 0x00AA00, 0x00AAAA,
-    0xAA0000, 0xAA00AA, 0xAA5500, 0xAAAAAA,
-    0x555555, 0x5555FF, 0x55FF55, 0x55FFFF,
-    0xFF5555, 0xFF55FF, 0xFFFF55, 0xFFFFFF
+    0x00000000, 0x000000AA, 0x0000AA00, 0x00AAAA00,
+    0x00AA0000, 0x00AA00AA, 0x00AA5500, 0x00AAAAAA,
+    0x00555555, 0x005555FF, 0x0055FF55, 0x0055FFFF,
+    0x00FF5555, 0x00FF55FF, 0x00FFFF55, 0x00FFFFFF
 };
 
 static inline void out8(uint16_t port, uint8_t value) {
@@ -47,14 +56,19 @@ static void serial_write(const char* text);
 extern "C" void login_screen();
 extern "C" void desktop_screen();
 
-extern "C" __attribute__((noreturn)) void kernel_main(uint32_t framebuffer_base) {
-    vram = reinterpret_cast<volatile uint32_t*>(framebuffer_base);
+extern "C" __attribute__((noreturn)) void kernel_main() {
+    FramebufferInfo* fb_info = reinterpret_cast<FramebufferInfo*>(0x5000);
+    vram = reinterpret_cast<volatile uint32_t*>(fb_info->base);
+    screen_width = fb_info->width;
+    screen_height = fb_info->height;
+    screen_pitch = fb_info->pitch;
+    
     fill(1);
     draw_logo(120, 35);
     progress(0);
 
     serial_initialize();
-    serial_write("Nova OS: kernel entered");
+    serial_write("Nova OS: kernel entered (64-bit mode)");
 
     progress(25);
     serial_write("Nova OS: kernel started");
@@ -96,7 +110,7 @@ static void pixel(uint32_t x, uint32_t y, uint8_t color) {
     const uint32_t base_x = x * scale;
     const uint32_t base_y = y * scale;
     for (uint32_t row = 0; row < scale; ++row) {
-        const uint32_t offset = (base_y + row) * screen_width + base_x;
+        const uint32_t offset = (base_y + row) * screen_pitch / 4 + base_x;
         for (uint32_t column = 0; column < scale; ++column) {
             vram[offset + column] = pixel_color;
         }
@@ -120,7 +134,7 @@ static void rectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, u
     const uint32_t base_x = x * scale;
     const uint32_t base_y = y * scale;
     for (uint32_t row = 0; row < pixel_height; ++row) {
-        uint32_t offset = (base_y + row) * screen_width + base_x;
+        uint32_t offset = (base_y + row) * screen_pitch / 4 + base_x;
         for (uint32_t column = 0; column < pixel_width; ++column) {
             vram[offset + column] = pixel_color;
         }
