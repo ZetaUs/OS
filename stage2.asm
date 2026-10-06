@@ -123,10 +123,10 @@ start:
     mov eax, cr0
     or eax, 1
     mov cr0, eax
-    ; Use retf for far jump to protected mode entry
-    ; This is more reliable than jmp dword in some assemblers
+    ; Far jump to protected mode entry using retf
+    ; Push 16-bit values for 16-bit retf
     push 0x08
-    push dword (0x7E00 + protected_mode_entry - start)
+    push word protected_mode_entry
     retf
 
 vbe_error:
