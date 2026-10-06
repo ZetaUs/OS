@@ -1,5 +1,4 @@
-default rel
-bits 64
+bits 32
 
 FRAMEBUFFER_PTR equ 0x5000
 SCREEN_WIDTH equ 1920
@@ -16,20 +15,20 @@ global _desktop_screen
 section .text
 
 _desktop_screen:
-    push rbp
-    mov rbp, rsp
-    push rbx
-    push rsi
-    push rdi
+    push ebp
+    mov ebp, esp
+    push ebx
+    push esi
+    push edi
     cld
 
-    mov dword [rel desktop_mouse_x], 960
-    mov dword [rel desktop_mouse_y], 500
-    mov byte [rel desktop_packet_stage], 0
-    mov byte [rel desktop_mouse_buttons], 0
-    mov byte [rel desktop_cursor_drawn], 0
-    mov byte [rel desktop_window], 0
-    mov byte [rel desktop_start_open], 0
+    mov dword [desktop_mouse_x], 960
+    mov dword [desktop_mouse_y], 500
+    mov byte [desktop_packet_stage], 0
+    mov byte [desktop_mouse_buttons], 0
+    mov byte [desktop_cursor_drawn], 0
+    mov byte [desktop_window], 0
+    mov byte [desktop_start_open], 0
     call desktop_draw_scene
     call desktop_draw_cursor
 
