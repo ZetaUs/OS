@@ -127,9 +127,9 @@ desktop_draw_scene:
     call desktop_draw_computer_icon
     push dword 15
     push dword computer_label
-    push dword 30
-    push dword 8
-    call draw_text
+    push dword 26
+    push dword 6
+    call draw_text_small
     add esp, 16
 
     push dword 14
@@ -148,9 +148,9 @@ desktop_draw_scene:
     add esp, 20
     push dword 14
     push dword explorer_label
-    push dword 70
-    push dword 4
-    call draw_text
+    push dword 68
+    push dword 30
+    call draw_text_small
     add esp, 16
 
     call desktop_draw_window
@@ -698,21 +698,21 @@ draw_rect:
     push edi
 
     mov eax, [ebp+8]
-    imul eax, LOGICAL_SCALE
+    imul eax, [desktop_rect_scale]
     add eax, VIEWPORT_X
     mov [ebp-4], eax
     mov ebx, [ebp+12]
-    imul ebx, LOGICAL_SCALE
+    imul ebx, [desktop_rect_scale]
     add ebx, VIEWPORT_Y
     mov [ebp-8], ebx
     mov ecx, [ebp+8]
     add ecx, [ebp+16]
-    imul ecx, LOGICAL_SCALE
+    imul ecx, [desktop_rect_scale]
     add ecx, VIEWPORT_X
     sub ecx, eax
     mov edx, [ebp+12]
     add edx, [ebp+20]
-    imul edx, LOGICAL_SCALE
+    imul edx, [desktop_rect_scale]
     add edx, VIEWPORT_Y
     sub edx, ebx
     mov esi, [ebp+24]
@@ -787,6 +787,42 @@ draw_text:
     jmp .text_next
 .text_done:
     pop esi
+    pop ebx
+    pop eax
+    pop ebp
+    ret
+
+; Draw compact shortcut labels with 2x2-pixel glyph pixels.
+draw_text_small:
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    push edx
+    push esi
+    mov dword [desktop_rect_scale], 2
+    mov ebx, [ebp+8]
+    imul ebx, 3
+    mov edx, [ebp+12]
+    imul edx, 3
+    mov esi, [ebp+16]
+.small_text_next:
+    movzx eax, byte [esi]
+    test al, al
+    jz .small_text_done
+    push dword [ebp+20]
+    push eax
+    push edx
+    push ebx
+    call draw_char
+    add esp, 16
+    add ebx, 8
+    inc esi
+    jmp .small_text_next
+.small_text_done:
+    mov dword [desktop_rect_scale], LOGICAL_SCALE
+    pop esi
+    pop edx
     pop ebx
     pop eax
     pop ebp
@@ -892,6 +928,7 @@ draw_char:
     ret
 
 section .data
+    desktop_rect_scale: dd LOGICAL_SCALE
     desktop_vga_palette:
         dd 0x000000, 0x06294F, 0x168A44, 0x1599E8
         dd 0xD9534F, 0x8E44AD, 0xB86B22, 0xD4D9DE
