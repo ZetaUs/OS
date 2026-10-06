@@ -344,7 +344,7 @@ desktop_draw_window:
 
 .files_window:
     push dword 15
-    push dword files_window_title
+    push dword explorer_window_title
     push dword 74
     push dword 82
     call draw_text
@@ -490,7 +490,7 @@ desktop_hit_test:
     cmp dword [desktop_mouse_y], 810
     jle .restart_action
     cmp dword [desktop_mouse_y], 918
-    jle .open_files
+    jle .shutdown_action
 .close_menu_outside:
     mov byte [desktop_start_open], 0
     mov eax, 1
