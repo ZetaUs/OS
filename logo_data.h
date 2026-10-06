@@ -411,9 +411,8 @@ static void draw_logo(uint16_t x, uint16_t y) {
         for (uint16_t col = 0; col < logo_width; ++col) {
             uint8_t color = logo_data[row * logo_width + col];
             if (color != 0) {
-                vram[(y + row) * 320u + x + col] = color;
+                pixel(x + col, y + row, color);
             }
         }
     }
 }
-

@@ -236,9 +236,8 @@ static void draw_load(uint16_t x, uint16_t y) {
         for (uint16_t col = 0; col < load_width; ++col) {
             uint8_t color = load_data[row * load_width + col];
             if (color != 0) {
-                vram[(y + row) * 320u + x + col] = color;
+                pixel(x + col, y + row, color);
             }
         }
     }
 }
-

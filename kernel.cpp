@@ -4,11 +4,24 @@ typedef unsigned int uint32_t;
 typedef signed int int32_t;
 typedef signed char int8_t;
 
-typedef volatile uint8_t* vram_ptr;
-static vram_ptr const vram = reinterpret_cast<vram_ptr>(0xA0000);
+static volatile uint32_t* vram;
+static void pixel(uint32_t x, uint32_t y, uint8_t color);
 
 #include "logo_data.h"
 #include "load_data.h"
+
+static const uint32_t screen_width = 1920;
+static const uint32_t screen_height = 1080;
+static const uint32_t logical_width = 320;
+static const uint32_t logical_height = 180;
+static const uint32_t scale = 6;
+
+static const uint32_t colors[16] = {
+    0x000000, 0x0000AA, 0x00AA00, 0x00AAAA,
+    0xAA0000, 0xAA00AA, 0xAA5500, 0xAAAAAA,
+    0x555555, 0x5555FF, 0x55FF55, 0x55FFFF,
+    0xFF5555, 0xFF55FF, 0xFFFF55, 0xFFFFFF
+};
 
 static inline void out8(uint16_t port, uint8_t value) {
     __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
@@ -34,7 +47,8 @@ static void serial_write(const char* text);
 extern "C" void login_screen();
 extern "C" void desktop_screen();
 
-extern "C" __attribute__((noreturn)) void kernel_main() {
+extern "C" __attribute__((noreturn)) void kernel_main(uint32_t framebuffer_base) {
+    vram = reinterpret_cast<volatile uint32_t*>(framebuffer_base);
     fill(1);
     draw_logo(120, 35);
     progress(0);
@@ -67,25 +81,48 @@ extern "C" __attribute__((noreturn)) void kernel_main() {
 }
 
 static void fill(uint8_t color) {
-    for (uint32_t index = 0; index < 320u * 200u; ++index) {
-        vram[index] = color;
+    const uint32_t pixel_color = colors[color & 0x0Fu];
+    for (uint32_t index = 0; index < screen_width * screen_height; ++index) {
+        vram[index] = pixel_color;
+    }
+}
+
+static void pixel(uint32_t x, uint32_t y, uint8_t color) {
+    if (x >= logical_width || y >= logical_height) {
+        return;
+    }
+
+    const uint32_t pixel_color = colors[color & 0x0Fu];
+    const uint32_t base_x = x * scale;
+    const uint32_t base_y = y * scale;
+    for (uint32_t row = 0; row < scale; ++row) {
+        const uint32_t offset = (base_y + row) * screen_width + base_x;
+        for (uint32_t column = 0; column < scale; ++column) {
+            vram[offset + column] = pixel_color;
+        }
     }
 }
 
 static void rectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint8_t color) {
-    if (x >= 320u || y >= 200u) {
+    if (x >= logical_width || y >= logical_height) {
         return;
     }
-    if (width > 320u - x) {
-        width = 320u - x;
+    if (width > logical_width - x) {
+        width = logical_width - x;
     }
-    if (height > 200u - y) {
-        height = 200u - y;
+    if (height > logical_height - y) {
+        height = logical_height - y;
     }
 
-    for (uint32_t row = 0; row < height; ++row) {
-        for (uint32_t column = 0; column < width; ++column) {
-            vram[(y + row) * 320u + x + column] = color;
+    const uint32_t pixel_color = colors[color & 0x0Fu];
+    const uint32_t pixel_width = width * scale;
+    const uint32_t pixel_height = height * scale;
+    const uint32_t base_x = x * scale;
+    const uint32_t base_y = y * scale;
+    for (uint32_t row = 0; row < pixel_height; ++row) {
+        uint32_t offset = (base_y + row) * screen_width + base_x;
+        for (uint32_t column = 0; column < pixel_width; ++column) {
+            vram[offset + column] = pixel_color;
         }
     }
 }
@@ -94,9 +131,9 @@ static void progress(uint8_t percent) {
     if (percent > 100u) {
         percent = 100u;
     }
-    rectangle(55, 173, 210, 8, 8);
-    rectangle(57, 175, 206, 4, 0);
-    rectangle(57, 175, 206u * percent / 100u, 4, 14);
+    rectangle(55, 155, 210, 8, 8);
+    rectangle(57, 157, 206, 4, 0);
+    rectangle(57, 157, 206u * percent / 100u, 4, 14);
 }
 
 static const uint8_t* glyph(char value) {
