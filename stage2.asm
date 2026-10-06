@@ -16,11 +16,11 @@ start:
     or al, 2
     out 0x92, al
 
-    ; Switch to VGA mode 0x13 for kernel
+    ; Switch to VBE mode 0x118 (800x600x24) temporarily for VBE query
     mov ax, 0x0013
     int 0x10
 
-    ; Query a VBE linear framebuffer mode for its physical base address.
+    ; Query VBE mode 0x118 for framebuffer address
     mov ax, 0x4F01
     mov cx, 0x0118
     mov di, vbe_mode_info
@@ -34,7 +34,7 @@ start:
     jz vbe_error
     mov [framebuffer_base], eax
 
-    ; Set VBE mode 118h with the linear framebuffer enabled.
+    ; Set VBE mode 118h with linear framebuffer
     mov ax, 0x4F02
     mov bx, 0x4118
     int 0x10
@@ -157,13 +157,15 @@ protected_mode_entry:
     cmp ax, 0xB0C5
     jne vbe_protected_error
 
+    ; Index 4: Enable LFB
     mov dx, 0x01CE
     mov ax, 4
     out dx, ax
     inc dx
-    xor ax, ax
+    mov ax, 0x0041
     out dx, ax
 
+    ; Index 1: Width = 1920
     mov dx, 0x01CE
     mov ax, 1
     out dx, ax
@@ -171,6 +173,7 @@ protected_mode_entry:
     mov ax, 1920
     out dx, ax
 
+    ; Index 2: Height = 1080
     mov dx, 0x01CE
     mov ax, 2
     out dx, ax
@@ -178,6 +181,7 @@ protected_mode_entry:
     mov ax, 1080
     out dx, ax
 
+    ; Index 3: BPP = 32
     mov dx, 0x01CE
     mov ax, 3
     out dx, ax
@@ -185,18 +189,28 @@ protected_mode_entry:
     mov ax, 32
     out dx, ax
 
+    ; Index 5: Vertical refresh
+    mov dx, 0x01CE
+    mov ax, 5
+    out dx, ax
+    inc dx
+    mov ax, 60
+    out dx, ax
+
+    ; Index 6: Pitch (bytes per line) = 1920 * 4 = 7680
     mov dx, 0x01CE
     mov ax, 6
     out dx, ax
     inc dx
-    mov ax, 1920
+    mov ax, 7680
     out dx, ax
 
+    ; Index 7: Y offset = 0
     mov dx, 0x01CE
-    mov ax, 4
+    mov ax, 7
     out dx, ax
     inc dx
-    mov ax, 0x0041
+    xor ax, ax
     out dx, ax
 
     mov eax, [framebuffer_base]

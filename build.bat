@@ -32,19 +32,19 @@ echo [2/7] Assembling stage2...
 if errorlevel 1 exit /b 1
 
 echo [3/7] Assembling login screen...
-"%NASM%" -f win64 "%~dp0login.asm" -o "%OUT%\login.o"
+"%NASM%" -f win32 "%~dp0login.asm" -o "%OUT%\login.o"
 if errorlevel 1 exit /b 1
 
 echo [4/7] Assembling desktop screen...
-"%NASM%" -f win64 "%~dp0desktop.asm" -o "%OUT%\desktop.o"
+"%NASM%" -f win32 "%~dp0desktop.asm" -o "%OUT%\desktop.o"
 if errorlevel 1 exit /b 1
 
 echo [5/7] Compiling the freestanding C++ kernel with Dev-C++...
-"%GXX%" -m64 -std=c++11 -Os -fno-toplevel-reorder -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -fno-stack-protector -fno-pic -fno-pie -fno-builtin -c "%~dp0kernel.cpp" -o "%OUT%\kernel.o"
+"%GXX%" -m32 -std=c++11 -Os -fno-toplevel-reorder -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -fno-stack-protector -fno-pic -fno-pie -fno-builtin -c "%~dp0kernel.cpp" -o "%OUT%\kernel.o"
 if errorlevel 1 exit /b 1
 
 echo [6/7] Linking and flattening the kernel...
-"%LD%" -mi386pep --image-base 0 --section-alignment 16 --file-alignment 16 --section-start .text=0x10000 -e _kernel_main -o "%OUT%\kernel.exe" "%OUT%\kernel.o" "%OUT%\login.o" "%OUT%\desktop.o"
+"%LD%" -mi386pe --image-base 0 --section-alignment 16 --file-alignment 16 --section-start .text=0x10000 -e _kernel_main -o "%OUT%\kernel.exe" "%OUT%\kernel.o" "%OUT%\login.o" "%OUT%\desktop.o"
 if errorlevel 1 exit /b 1
 "%OBJCOPY%" --only-section=.text --only-section=.rdata --only-section=.data -O binary "%OUT%\kernel.exe" "%OUT%\kernel.bin"
 if errorlevel 1 exit /b 1

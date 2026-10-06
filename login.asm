@@ -1,11 +1,9 @@
-default rel
-bits 64
+bits 32
 
 ; VGA framebuffer address
 FRAMEBUFFER_PTR equ 0x5000
 SCREEN_WIDTH equ 1920
 SCREEN_HEIGHT equ 1080
-SCREEN_PITCH equ 7680
 LOGICAL_SCALE equ 6
 %include "mouse_data.inc"
 
@@ -22,13 +20,13 @@ global _login_screen
 section .text
 
 _login_screen:
-    push rbp
-    mov rbp, rsp
-    push rbx
-    push rcx
-    push rdx
-    push rsi
-    push rdi
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
 
     mov dword [g_mouse_x], 960
     mov dword [g_mouse_y], 540
@@ -83,22 +81,22 @@ _login_screen:
     jmp .input_loop
 
 .login_exit:
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rbx
-    pop rbp
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop ebp
     ret
 
 draw_login_scene:
-    push rax
-    push rcx
-    push rdi
+    push eax
+    push ecx
+    push edi
 
-    mov rdi, [rel FRAMEBUFFER_PTR]
+    mov edi, [FRAMEBUFFER_PTR]
     mov ecx, SCREEN_WIDTH * SCREEN_HEIGHT
-    mov eax, [rel login_vga_palette + COLOR_BG * 4]
+    mov eax, [login_vga_palette + COLOR_BG * 4]
     rep stosd
 
     push COLOR_BORDER
@@ -107,7 +105,7 @@ draw_login_scene:
     push 34
     push 70
     call draw_rect
-    add rsp, 40
+    add esp, 20
 
     push COLOR_INNER
     push 124
@@ -115,7 +113,7 @@ draw_login_scene:
     push 38
     push 74
     call draw_rect
-    add rsp, 40
+    add esp, 20
 
     push COLOR_BUTTON
     push 16
@@ -123,31 +121,31 @@ draw_login_scene:
     push 90
     push 110
     call draw_rect
-    add rsp, 40
+    add esp, 20
 
     push COLOR_TEXT
     push 93
     push 148
     call draw_chinese_deng
-    add rsp, 24
+    add esp, 12
     
     ; 录: 12x12 at (160, 93), color=0
     push COLOR_TEXT
     push 93
     push 160
     call draw_chinese_lu
-    add rsp, 24
+    add esp, 12
 
-    pop rdi
-    pop rcx
-    pop rax
+    pop edi
+    pop ecx
+    pop eax
     ret
 
 ; Initialize the auxiliary PS/2 port for polled mouse input.
 mouse_init:
-    push rbx
-    push rcx
-    push rdx
+    push ebx
+    push ecx
+    push edx
 
     call wait_input_empty
     jc .mouse_init_failed
@@ -182,9 +180,9 @@ mouse_init:
 .mouse_init_failed:
     xor al, al
 .mouse_init_done:
-    pop rdx
-    pop rcx
-    pop rbx
+    pop edx
+    pop ecx
+    pop ebx
     ret
 
 wait_input_empty:
@@ -216,7 +214,7 @@ wait_output_full:
     ret
 
 mouse_send:
-    push rbx
+    push ebx
     mov bl, al
     call wait_input_empty
     jc .mouse_send_failed
@@ -232,65 +230,65 @@ mouse_send:
     cmp al, 0xFA
     jne .mouse_send_failed
     clc
-    pop rbx
+    pop ebx
     ret
 .mouse_send_failed:
     stc
-    pop rbx
+    pop ebx
     ret
 
 update_mouse:
-    push rbx
-    push rcx
-    push rsi
+    push ebx
+    push ecx
+    push esi
     mov bl, [mouse_packet]
     test bl, 0x40
     jnz .check_click
-    movsx rax, byte [mouse_packet + 1]
-    imul rax, 3
-    add rax, [rel g_mouse_x]
-    test rax, rax
+    movsx eax, byte [mouse_packet + 1]
+    imul eax, 3
+    add eax, [g_mouse_x]
+    test eax, eax
     jns .mouse_x_nonnegative
-    xor rax, rax
+    xor eax, eax
 .mouse_x_nonnegative:
-    cmp rax, SCREEN_WIDTH - MOUSE_WIDTH
+    cmp eax, SCREEN_WIDTH - MOUSE_WIDTH
     jle .mouse_x_store
-    mov rax, SCREEN_WIDTH - MOUSE_WIDTH
+    mov eax, SCREEN_WIDTH - MOUSE_WIDTH
 .mouse_x_store:
-    mov [rel g_mouse_x], eax
+    mov [g_mouse_x], eax
 
     test bl, 0x80
     jnz .check_click
-    movsx rax, byte [mouse_packet + 2]
-    neg rax
-    imul rax, 3
-    add rax, [rel g_mouse_y]
-    test rax, rax
+    movsx eax, byte [mouse_packet + 2]
+    neg eax
+    imul eax, 3
+    add eax, [g_mouse_y]
+    test eax, eax
     jns .mouse_y_nonnegative
-    xor rax, rax
+    xor eax, eax
 .mouse_y_nonnegative:
-    cmp rax, SCREEN_HEIGHT - MOUSE_HEIGHT
+    cmp eax, SCREEN_HEIGHT - MOUSE_HEIGHT
     jle .mouse_y_store
-    mov rax, SCREEN_HEIGHT - MOUSE_HEIGHT
+    mov eax, SCREEN_HEIGHT - MOUSE_HEIGHT
 .mouse_y_store:
-    mov [rel g_mouse_y], eax
+    mov [g_mouse_y], eax
 
 .check_click:
     mov al, bl
     and al, 1
-    mov cl, [rel mouse_buttons]
-    mov [rel mouse_buttons], al
+    mov cl, [mouse_buttons]
+    mov [mouse_buttons], al
     test al, al
     jz .redraw_mouse
     test cl, 1
     jnz .redraw_mouse
 
-    mov eax, [rel g_mouse_x]
+    mov eax, [g_mouse_x]
     cmp eax, 110 * LOGICAL_SCALE
     jl .redraw_mouse
     cmp eax, 210 * LOGICAL_SCALE
     jg .redraw_mouse
-    mov eax, [rel g_mouse_y]
+    mov eax, [g_mouse_y]
     cmp eax, 90 * LOGICAL_SCALE
     jl .redraw_mouse
     cmp eax, 106 * LOGICAL_SCALE
@@ -306,265 +304,257 @@ update_mouse:
     xor eax, eax
 
 .update_done:
-    pop rsi
-    pop rcx
-    pop rbx
+    pop esi
+    pop ecx
+    pop ebx
     ret
 
 draw_mouse_cursor:
-    push rax
-    push rbx
-    push rcx
-    push rdx
-    push rsi
-    push rdi
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
 
-    cmp byte [rel cursor_drawn], 0
+    cmp byte [cursor_drawn], 0
     je .draw_new_cursor
 
-    mov rdi, [rel cursor_prev_y]
-    imul rdi, SCREEN_WIDTH
-    add rdi, [rel cursor_prev_x]
-    shl rdi, 2
-    add rdi, [rel FRAMEBUFFER_PTR]
-    xor rbx, rbx
+    mov edi, [cursor_prev_y]
+    imul edi, SCREEN_WIDTH
+    add edi, [cursor_prev_x]
+    shl edi, 2
+    add edi, [FRAMEBUFFER_PTR]
+    xor ebx, ebx
 .restore_cursor_row:
     mov ecx, MOUSE_WIDTH
     xor esi, esi
 .restore_cursor_column:
-    mov rax, rbx
-    imul rax, MOUSE_WIDTH
-    add rax, rsi
-    mov eax, [rel cursor_saved + rax * 4]
-    mov [rdi], eax
-    add rdi, 4
-    inc rsi
+    mov eax, ebx
+    imul eax, MOUSE_WIDTH
+    add eax, esi
+    mov eax, [cursor_saved + eax * 4]
+    mov [edi], eax
+    add edi, 4
+    inc esi
     dec ecx
     jnz .restore_cursor_column
-    add rdi, SCREEN_WIDTH * 4 - MOUSE_WIDTH * 4
-    inc rbx
-    cmp rbx, MOUSE_HEIGHT
+    add edi, SCREEN_WIDTH * 4 - MOUSE_WIDTH * 4
+    inc ebx
+    cmp ebx, MOUSE_HEIGHT
     jl .restore_cursor_row
 
 .draw_new_cursor:
-    mov eax, [rel g_mouse_x]
-    mov [rel cursor_prev_x], eax
-    mov eax, [rel g_mouse_y]
-    mov [rel cursor_prev_y], eax
-    mov rdi, [rel g_mouse_y]
-    imul rdi, SCREEN_WIDTH
-    add rdi, [rel g_mouse_x]
-    shl rdi, 2
-    add rdi, [rel FRAMEBUFFER_PTR]
-    xor rbx, rbx
+    mov eax, [g_mouse_x]
+    mov [cursor_prev_x], eax
+    mov eax, [g_mouse_y]
+    mov [cursor_prev_y], eax
+    mov edi, [g_mouse_y]
+    imul edi, SCREEN_WIDTH
+    add edi, [g_mouse_x]
+    shl edi, 2
+    add edi, [FRAMEBUFFER_PTR]
+    xor ebx, ebx
 .cursor_row:
     mov ecx, MOUSE_WIDTH
     xor esi, esi
 .cursor_column:
-    mov eax, [rdi]
+    mov eax, [edi]
     mov edx, ebx
-    imul rdx, MOUSE_WIDTH
-    add rdx, rsi
-    mov [rel cursor_saved + rdx * 4], eax
-    mov rax, rbx
-    imul rax, MOUSE_WIDTH
-    add rax, rsi
-    movzx eax, byte [rel mouse_data + rax]
+    imul edx, MOUSE_WIDTH
+    add edx, esi
+    mov [cursor_saved + edx * 4], eax
+    mov eax, ebx
+    imul eax, MOUSE_WIDTH
+    add eax, esi
+    movzx eax, byte [mouse_data + eax]
     test al, al
     je .cursor_skip
-    mov eax, [rel login_vga_palette + rax * 4]
-    mov [rdi], eax
+    mov eax, [login_vga_palette + eax * 4]
+    mov [edi], eax
 .cursor_skip:
-    add rdi, 4
-    inc rsi
+    add edi, 4
+    inc esi
     dec ecx
     jnz .cursor_column
-    add rdi, SCREEN_WIDTH * 4 - MOUSE_WIDTH * 4
-    inc rbx
-    cmp rbx, MOUSE_HEIGHT
+    add edi, SCREEN_WIDTH * 4 - MOUSE_WIDTH * 4
+    inc ebx
+    cmp ebx, MOUSE_HEIGHT
     jl .cursor_row
-    mov byte [rel cursor_drawn], 1
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rbx
-    pop rax
+    mov byte [cursor_drawn], 1
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
     ret
 
-; Stack: [rsp+8]=x, [rsp+16]=y, [rsp+24]=width,
-; [rsp+32]=height, [rsp+40]=color
+; Stack: [ebp+8]=x, [ebp+12]=y, [ebp+16]=width,
+; [ebp+20]=height, [ebp+24]=color
 draw_rect:
-    push rbp
-    mov rbp, rsp
-    push rbx
-    push rcx
-    push rdx
-    push rsi
-    push rdi
-    mov eax, [rbp+16]
-    imul rax, LOGICAL_SCALE
-    mov rbx, [rbp+24]
-    imul rbx, LOGICAL_SCALE
-    mov rcx, [rbp+32]
-    imul rcx, LOGICAL_SCALE
-    mov rdx, [rbp+40]
-    imul rdx, LOGICAL_SCALE
-    mov rsi, [rbp+48]
-    and rsi, 0x0F
-    mov esi, [rel login_vga_palette + rsi * 4]
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
+    mov eax, [ebp+8]
+    imul eax, LOGICAL_SCALE
+    mov ebx, [ebp+12]
+    imul ebx, LOGICAL_SCALE
+    mov ecx, [ebp+16]
+    imul ecx, LOGICAL_SCALE
+    mov edx, [ebp+20]
+    imul edx, LOGICAL_SCALE
+    mov esi, [ebp+24]
+    and esi, 0x0F
+    mov esi, [login_vga_palette + esi * 4]
     cmp eax, SCREEN_WIDTH
     jae .rect_done
     cmp ebx, SCREEN_HEIGHT
     jae .rect_done
-    mov rdi, SCREEN_WIDTH
-    sub rdi, rax
-    cmp rcx, rdi
+    mov edi, SCREEN_WIDTH
+    sub edi, eax
+    cmp ecx, edi
     jbe .rect_width_ok
-    mov rcx, rdi
+    mov ecx, edi
 .rect_width_ok:
-    mov rdi, SCREEN_HEIGHT
-    sub rdi, rbx
-    cmp rdx, rdi
+    mov edi, SCREEN_HEIGHT
+    sub edi, ebx
+    cmp edx, edi
     jbe .rect_height_ok
-    mov rdx, rdi
+    mov edx, edi
 .rect_height_ok:
-    imul rbx, SCREEN_WIDTH
-    add rbx, rax
-    shl rbx, 2
-    add rbx, [rel FRAMEBUFFER_PTR]
+    imul ebx, SCREEN_WIDTH
+    add ebx, eax
+    shl ebx, 2
+    add ebx, [FRAMEBUFFER_PTR]
 .draw_rect_row:
-    push rcx
-    mov rax, rsi
-    mov rdi, rbx
+    push ecx
+    mov eax, esi
+    mov edi, ebx
 .draw_rect_column:
     stosd
-    dec rcx
+    dec ecx
     jnz .draw_rect_column
-    pop rcx
-    add rbx, SCREEN_WIDTH * 4
-    dec rdx
+    pop ecx
+    add ebx, SCREEN_WIDTH * 4
+    dec edx
     jnz .draw_rect_row
 .rect_done:
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rbx
-    pop rbp
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop ebp
     ret
 
 draw_chinese_deng:
-    push rbp
-    mov rbp, rsp
-    push rdi
-    push rsi
-    mov rdi, deng_expanded
-    mov rsi, [rbp+16]
-    mov edx, [rbp+24]
-    mov ecx, [rbp+32]
+    push ebp
+    mov ebp, esp
+    push dword deng_expanded
+    push dword [ebp+16]
+    push dword [ebp+12]
+    push dword [ebp+8]
     call draw_glyph_12
-    pop rsi
-    pop rdi
-    pop rbp
+    add esp, 16
+    pop ebp
     ret
 
 draw_chinese_lu:
-    push rbp
-    mov rbp, rsp
-    push rdi
-    push rsi
-    mov rdi, lu_expanded
-    mov rsi, [rbp+16]
-    mov edx, [rbp+24]
-    mov ecx, [rbp+32]
+    push ebp
+    mov ebp, esp
+    push dword lu_expanded
+    push dword [ebp+16]
+    push dword [ebp+12]
+    push dword [ebp+8]
     call draw_glyph_12
-    pop rsi
-    pop rdi
-    pop rbp
+    add esp, 16
+    pop ebp
     ret
 
 draw_glyph_12:
-    push rbp
-    mov rbp, rsp
-    push rbx
-    push rcx
-    push rdx
-    push rsi
-    push rdi
-    xor rbx, rbx
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    push ecx
+    push esi
+    xor ebx, ebx
 .glyph_row:
     xor ecx, ecx
 .glyph_column:
-    mov rax, rbx
-    imul rax, 12
-    add rax, rcx
-    mov rsi, rdi
-    cmp byte [rsi+rax], 0
-    je .glyph_next
-    push rbx
-    push rcx
-    push rsi
-    push rdx
-    mov eax, ecx
-    add eax, [rbp+24]
-    push rax
     mov eax, ebx
-    add eax, edx
-    push rax
+    imul eax, 12
+    add eax, ecx
+    mov esi, [ebp+20]
+    cmp byte [esi+eax], 0
+    je .glyph_next
+    push ebx
+    push ecx
+    push dword [ebp+16]
+    mov eax, [ebp+12]
+    add eax, ebx
+    push eax
+    mov eax, [ebp+8]
+    add eax, ecx
+    push eax
     call draw_logical_pixel
-    add rsp, 48
-    pop rcx
-    pop rbx
+    add esp, 12
+    pop ecx
+    pop ebx
 .glyph_next:
-    inc rcx
-    cmp rcx, 12
+    inc ecx
+    cmp ecx, 12
     jl .glyph_column
-    inc rbx
-    cmp rbx, 12
+    inc ebx
+    cmp ebx, 12
     jl .glyph_row
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rbx
-    pop rbp
+    pop esi
+    pop ecx
+    pop ebx
+    pop eax
+    pop ebp
     ret
 
 draw_logical_pixel:
-    push rbp
-    mov rbp, rsp
-    push rbx
-    push rcx
-    push rdx
-    push rsi
-    push rdi
-    mov rax, [rbp+16]
-    imul rax, LOGICAL_SCALE
-    mov rbx, [rbp+24]
-    imul rbx, LOGICAL_SCALE
-    imul rbx, SCREEN_WIDTH
-    add rbx, rax
-    shl rbx, 2
-    add rbx, [rel FRAMEBUFFER_PTR]
-    mov eax, [rbp+32]
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
+    mov eax, [ebp+8]
+    imul eax, LOGICAL_SCALE
+    mov ebx, [ebp+12]
+    imul ebx, SCREEN_WIDTH
+    add ebx, eax
+    shl ebx, 2
+    add ebx, [FRAMEBUFFER_PTR]
+    mov eax, [ebp+16]
     and eax, 0x0F
-    mov esi, [rel login_vga_palette + rax * 4]
+    mov esi, [login_vga_palette + eax * 4]
     mov edx, LOGICAL_SCALE
 .logical_pixel_row:
-    mov rdi, rbx
+    mov edi, ebx
     mov ecx, LOGICAL_SCALE
     mov eax, esi
     rep stosd
-    add rbx, SCREEN_WIDTH * 4
-    dec rdx
+    add ebx, SCREEN_WIDTH * 4
+    dec edx
     jnz .logical_pixel_row
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rbx
-    pop rbp
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    pop ebp
     ret
 
 section .data
