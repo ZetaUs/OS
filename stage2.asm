@@ -77,14 +77,26 @@ start:
     mov si, vbe_ok_msg
     call print_string
 
+    ; Load kernel from disk
+    mov si, kernel_load_msg
+    call print_string
+    
     mov si, kernel_dap
     mov dl, [boot_drive]
     mov ah, 0x42
     int 0x13
     jc kernel_load_error
 
+    ; Display kernel loaded message
+    mov si, kernel_loaded_msg
+    call print_string
+
     cli
     lgdt [gdt_descriptor]
+    
+    ; Display protected mode message
+    mov si, prot_mode_msg
+    call print_string
     
     ; Disable interrupts and prepare for protected mode
     in al, 0x21
@@ -170,6 +182,9 @@ hzk_dap:
 boot_drive: db 0
 boot_msg: db 'Nova OS Booting...', 13, 10, 0
 vbe_ok_msg: db 'VBE Mode OK', 13, 10, 0
+kernel_load_msg: db 'Loading kernel...', 13, 10, 0
+kernel_loaded_msg: db 'Kernel loaded', 13, 10, 0
+prot_mode_msg: db 'Entering protected mode...', 13, 10, 0
 error_message: db 'Kernel load error', 0
 vbe_error_message: db 'VBE mode error', 0
 framebuffer_base: dd 0
