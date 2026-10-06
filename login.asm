@@ -1,8 +1,11 @@
 bits 32
 
 ; VGA framebuffer address
-VGA_MEMORY equ 0xA0000
-SCREEN_WIDTH equ 320
+FRAMEBUFFER_PTR equ 0x5000
+SCREEN_WIDTH equ 1920
+SCREEN_HEIGHT equ 1080
+LOGICAL_SCALE equ 6
+%include "vga_palette.inc"
 %include "mouse_data.inc"
 
 ; Colors
@@ -26,8 +29,8 @@ _login_screen:
     push esi
     push edi
 
-    mov dword [g_mouse_x], 160
-    mov dword [g_mouse_y], 98
+    mov dword [g_mouse_x], 960
+    mov dword [g_mouse_y], 540
     mov byte [mouse_packet_stage], 0
     mov byte [mouse_buttons], 0
     call mouse_init
@@ -91,10 +94,10 @@ draw_login_scene:
     push ecx
     push edi
 
-    mov edi, VGA_MEMORY
-    mov ecx, 320 * 200
-    mov al, COLOR_BG
-    rep stosb
+    mov edi, [FRAMEBUFFER_PTR]
+    mov ecx, SCREEN_WIDTH * SCREEN_HEIGHT
+    mov eax, [vga_palette + COLOR_BG * 4]
+    rep stosd
 
     push COLOR_BORDER
     push 132
@@ -242,14 +245,15 @@ update_mouse:
     test bl, 0x40
     jnz .check_click
     movsx eax, byte [mouse_packet + 1]
+    imul eax, 3
     add eax, [g_mouse_x]
     test eax, eax
     jns .mouse_x_nonnegative
     xor eax, eax
 .mouse_x_nonnegative:
-    cmp eax, 300
+    cmp eax, SCREEN_WIDTH - MOUSE_WIDTH
     jle .mouse_x_store
-    mov eax, 300
+    mov eax, SCREEN_WIDTH - MOUSE_WIDTH
 .mouse_x_store:
     mov [g_mouse_x], eax
 
@@ -257,14 +261,15 @@ update_mouse:
     jnz .check_click
     movsx eax, byte [mouse_packet + 2]
     neg eax
+    imul eax, 3
     add eax, [g_mouse_y]
     test eax, eax
     jns .mouse_y_nonnegative
     xor eax, eax
 .mouse_y_nonnegative:
-    cmp eax, 176
+    cmp eax, SCREEN_HEIGHT - MOUSE_HEIGHT
     jle .mouse_y_store
-    mov eax, 176
+    mov eax, SCREEN_HEIGHT - MOUSE_HEIGHT
 .mouse_y_store:
     mov [g_mouse_y], eax
 
@@ -279,14 +284,14 @@ update_mouse:
     jnz .redraw_mouse
 
     mov eax, [g_mouse_x]
-    cmp eax, 110
+    cmp eax, 110 * LOGICAL_SCALE
     jl .redraw_mouse
-    cmp eax, 210
+    cmp eax, 210 * LOGICAL_SCALE
     jg .redraw_mouse
     mov eax, [g_mouse_y]
-    cmp eax, 90
+    cmp eax, 90 * LOGICAL_SCALE
     jl .redraw_mouse
-    cmp eax, 106
+    cmp eax, 106 * LOGICAL_SCALE
     jl .login_clicked
     jmp .redraw_mouse
 
@@ -315,7 +320,8 @@ draw_mouse_cursor:
     mov edi, [g_mouse_y]
     imul edi, SCREEN_WIDTH
     add edi, [g_mouse_x]
-    add edi, VGA_MEMORY
+    shl edi, 2
+    add edi, [FRAMEBUFFER_PTR]
     xor ebx, ebx
 .cursor_row:
     mov ecx, MOUSE_WIDTH
@@ -327,13 +333,15 @@ draw_mouse_cursor:
     mov al, [mouse_data + eax]
     test al, al
     je .cursor_skip
-    mov [edi], al
+    movzx eax, al
+    mov eax, [vga_palette + eax * 4]
+    mov [edi], eax
 .cursor_skip:
-    inc edi
+    add edi, 4
     inc esi
     dec ecx
     jnz .cursor_column
-    add edi, SCREEN_WIDTH - MOUSE_WIDTH
+    add edi, SCREEN_WIDTH * 4 - MOUSE_WIDTH * 4
     inc ebx
     cmp ebx, MOUSE_HEIGHT
     jl .cursor_row
@@ -356,28 +364,51 @@ draw_rect:
     push esi
     push edi
     mov eax, [ebp+8]
+    imul eax, LOGICAL_SCALE
     mov ebx, [ebp+12]
+    imul ebx, LOGICAL_SCALE
     mov ecx, [ebp+16]
+    imul ecx, LOGICAL_SCALE
     mov edx, [ebp+20]
-    movzx esi, byte [ebp+24]
-    mov edi, VGA_MEMORY
+    imul edx, LOGICAL_SCALE
+    mov esi, [ebp+24]
+    and esi, 0x0F
+    mov esi, [vga_palette + esi * 4]
+    cmp eax, SCREEN_WIDTH
+    jae .rect_done
+    cmp ebx, SCREEN_HEIGHT
+    jae .rect_done
+    mov edi, SCREEN_WIDTH
+    sub edi, eax
+    cmp ecx, edi
+    jbe .rect_width_ok
+    mov ecx, edi
+.rect_width_ok:
+    mov edi, SCREEN_HEIGHT
+    sub edi, ebx
+    cmp edx, edi
+    jbe .rect_height_ok
+    mov edx, edi
+.rect_height_ok:
     imul ebx, SCREEN_WIDTH
-    add edi, ebx
-    add edi, eax
+    add ebx, eax
+    shl ebx, 2
+    add ebx, [FRAMEBUFFER_PTR]
 .draw_rect_row:
     push ecx
     mov ecx, [ebp+16]
+    imul ecx, LOGICAL_SCALE
     mov eax, esi
+    mov edi, ebx
 .draw_rect_column:
-    mov byte [edi], al
-    inc edi
+    stosd
     dec ecx
     jnz .draw_rect_column
     pop ecx
-    add edi, SCREEN_WIDTH
-    sub edi, [ebp+16]
+    add ebx, SCREEN_WIDTH * 4
     dec edx
     jnz .draw_rect_row
+.rect_done:
     pop edi
     pop esi
     pop edx
@@ -386,95 +417,115 @@ draw_rect:
     pop ebp
     ret
 
-; Chinese character "登" (12x12) - index 117
 draw_chinese_deng:
     push ebp
     mov ebp, esp
-    push ebx
-    push ecx
-    push edx
-    push edi
-    
-    mov eax, [ebp+8]      ; x
-    mov ebx, [ebp+12]     ; y
-    movzx edx, byte [ebp+16]  ; color (in dl)
-    
-    mov edi, VGA_MEMORY
-    imul ebx, SCREEN_WIDTH
-    add edi, ebx
-    add edi, eax
-    
-    ; 登 bitmap data (12x12 = 144 bytes, 0 or 1)
-    mov esi, deng_expanded
-    mov ebx, 12  ; row counter
-.deng_row:
-    mov ecx, 12  ; col counter
-.deng_col:
-    movzx eax, byte [esi]
-    test eax, eax
-    jz .deng_skip
-    mov byte [edi], dl
-.deng_skip:
-    inc edi
-    inc esi
-    dec ecx
-    jnz .deng_col
-    add edi, SCREEN_WIDTH - 12  ; move to next row
-    dec ebx
-    jnz .deng_row
-    
-    pop edi
-    pop edx
-    pop ecx
-    pop ebx
+    push dword deng_expanded
+    push dword [ebp+16]
+    push dword [ebp+12]
+    push dword [ebp+8]
+    call draw_glyph_12
+    add esp, 16
     pop ebp
     ret
 
-; Chinese character "录" (12x12) - index 118
 draw_chinese_lu:
     push ebp
     mov ebp, esp
+    push dword lu_expanded
+    push dword [ebp+16]
+    push dword [ebp+12]
+    push dword [ebp+8]
+    call draw_glyph_12
+    add esp, 16
+    pop ebp
+    ret
+
+draw_glyph_12:
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    push ecx
+    push esi
+    xor ebx, ebx
+.glyph_row:
+    xor ecx, ecx
+.glyph_column:
+    mov eax, ebx
+    imul eax, 12
+    add eax, ecx
+    mov esi, [ebp+20]
+    cmp byte [esi+eax], 0
+    je .glyph_next
+    push ebx
+    push ecx
+    push dword [ebp+16]
+    mov eax, [ebp+12]
+    add eax, ebx
+    push eax
+    mov eax, [ebp+8]
+    add eax, ecx
+    push eax
+    call draw_logical_pixel
+    add esp, 12
+    pop ecx
+    pop ebx
+.glyph_next:
+    inc ecx
+    cmp ecx, 12
+    jl .glyph_column
+    inc ebx
+    cmp ebx, 12
+    jl .glyph_row
+    pop esi
+    pop ecx
+    pop ebx
+    pop eax
+    pop ebp
+    ret
+
+draw_logical_pixel:
+    push ebp
+    mov ebp, esp
+    push eax
     push ebx
     push ecx
     push edx
+    push esi
     push edi
-    
-    mov eax, [ebp+8]      ; x
-    mov ebx, [ebp+12]     ; y
-    movzx edx, byte [ebp+16]  ; color (in dl)
-    
-    mov edi, VGA_MEMORY
+    mov eax, [ebp+8]
+    imul eax, LOGICAL_SCALE
+    mov ebx, [ebp+12]
+    imul ebx, LOGICAL_SCALE
     imul ebx, SCREEN_WIDTH
-    add edi, ebx
-    add edi, eax
-    
-    ; 录 bitmap data (12x12 = 144 bytes, 0 or 1)
-    mov esi, lu_expanded
-    mov ebx, 12  ; row counter
-.lu_row:
-    mov ecx, 12  ; col counter
-.lu_col:
-    movzx eax, byte [esi]
-    test eax, eax
-    jz .lu_skip
-    mov byte [edi], dl
-.lu_skip:
-    inc edi
-    inc esi
-    dec ecx
-    jnz .lu_col
-    add edi, SCREEN_WIDTH - 12  ; move to next row
-    dec ebx
-    jnz .lu_row
-    
+    add ebx, eax
+    shl ebx, 2
+    add ebx, [FRAMEBUFFER_PTR]
+    mov eax, [ebp+16]
+    and eax, 0x0F
+    mov esi, [vga_palette + eax * 4]
+    mov edx, LOGICAL_SCALE
+.logical_pixel_row:
+    mov edi, ebx
+    mov ecx, LOGICAL_SCALE
+    mov eax, esi
+    rep stosd
+    add ebx, SCREEN_WIDTH * 4
+    dec edx
+    jnz .logical_pixel_row
     pop edi
+    pop esi
     pop edx
     pop ecx
     pop ebx
+    pop eax
     pop ebp
     ret
 
 section .data
+    %include "vga_palette.inc"
+
     ; 登 expanded bitmap (12x12 = 144 bytes, 0 or 1)
     deng_expanded: db 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0
                    db 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0
