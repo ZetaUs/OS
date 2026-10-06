@@ -192,7 +192,20 @@ protected_mode_entry:
     mov dword [0x5004], 1920
     mov dword [0x5008], 1080
     mov dword [0x500C], 7680
-    mov eax, 0x10000
+    ; The kernel is linked at 2 MiB; BIOS reads it into the low-memory
+    ; staging buffer, then copy the full reserved 64-sector region.
+    mov esi, 0x10000
+    mov edi, 0x200000
+    mov ecx, 8192
+    rep movsd
+
+    ; Clear kernel BSS and leave a clean stack-independent work area.
+    mov edi, 0x208000
+    xor eax, eax
+    mov ecx, 16384
+    rep stosd
+
+    mov eax, 0x200000
     push dword [0x5000]
     call eax
     add esp, 4
