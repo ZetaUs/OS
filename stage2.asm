@@ -202,7 +202,7 @@ kernel_dap:
     dw 128
     dw 0
     dw 0x1000
-    dd 18
+    dd 20
     dd 0
 
 hzk_dap:
