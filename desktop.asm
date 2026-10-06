@@ -899,12 +899,13 @@ section .data
         dd 0xE66B64, 0xAA72CC, 0xFFD34D, 0xFFFFFF
     %include "mouse_data.inc"
     %include "computer_data.inc"
+    %include "logo_data.inc"
     computer_label: db 'COMPUTER', 0
-    folder_label: db 'FILES', 0
+    explorer_label: db 'EXPLORER', 0
     clock_text: db '08:00', 0
     close_text: db 'X', 0
     pc_window_title: db 'COMPUTER', 0
-    files_window_title: db 'EXPLORER', 0
+    explorer_window_title: db 'EXPLORER', 0
     disk_label: db 'LOCAL DISK C', 0
     empty_folder_text: db 'NO FILES YET', 0
     menu_title: db 'NOVA OS', 0
