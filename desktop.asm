@@ -806,7 +806,7 @@ draw_text:
     push ebx
     call draw_char
     add esp, 16
-    add ebx, 16
+    add ebx, 8
     inc esi
     jmp .text_next
 .text_done:
@@ -838,7 +838,7 @@ draw_text_small:
     push ebx
     call draw_char
     add esp, 16
-    add ebx, 8
+    add ebx, 16
     inc esi
     jmp .small_text_next
 .small_text_done:
