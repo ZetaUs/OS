@@ -1,7 +1,9 @@
 bits 32
 
-VGA_MEMORY equ 0xA0000
-SCREEN_WIDTH equ 320
+FRAMEBUFFER_PTR equ 0x5000
+SCREEN_WIDTH equ 1920
+SCREEN_HEIGHT equ 1080
+LOGICAL_SCALE equ 6
 
 global _desktop_screen
 
@@ -42,7 +44,7 @@ _desktop_screen:
     push dword 3
     push dword 120
     push dword 320
-    push dword 80
+    push dword 58
     push dword 0
     call draw_rect
     add esp, 20
@@ -146,14 +148,14 @@ _desktop_screen:
     push dword 8
     push dword 22
     push dword 320
-    push dword 178
+    push dword 158
     push dword 0
     call draw_rect
     add esp, 20
     push dword 15
     push dword 1
     push dword 320
-    push dword 178
+    push dword 158
     push dword 0
     call draw_rect
     add esp, 20
@@ -162,20 +164,20 @@ _desktop_screen:
     push dword 1
     push dword 16
     push dword 58
-    push dword 181
+    push dword 161
     push dword 5
     call draw_rect
     add esp, 20
     push dword 15
     push dword start_text
-    push dword 186
+    push dword 166
     push dword 14
     call draw_text
     add esp, 16
 
     push dword 15
     push dword taskbar_text
-    push dword 186
+    push dword 166
     push dword 76
     call draw_text
     add esp, 16
@@ -183,13 +185,13 @@ _desktop_screen:
     push dword 7
     push dword 16
     push dword 49
-    push dword 184
+    push dword 164
     push dword 265
     call draw_rect
     add esp, 20
     push dword 15
     push dword clock_text
-    push dword 188
+    push dword 168
     push dword 270
     call draw_text
     add esp, 16
@@ -211,17 +213,23 @@ draw_rect:
     push edi
 
     mov eax, [ebp+8]
+    imul eax, LOGICAL_SCALE
     mov ebx, [ebp+12]
+    imul ebx, LOGICAL_SCALE
     mov ecx, [ebp+16]
+    imul ecx, LOGICAL_SCALE
     mov edx, [ebp+20]
+    imul edx, LOGICAL_SCALE
     mov esi, [ebp+24]
+    and esi, 0x0F
+    mov esi, [vga_palette + esi * 4]
     test ecx, ecx
     jz .rect_done
     test edx, edx
     jz .rect_done
     cmp eax, SCREEN_WIDTH
     jae .rect_done
-    cmp ebx, 200
+    cmp ebx, SCREEN_HEIGHT
     jae .rect_done
     mov edi, SCREEN_WIDTH
     sub edi, eax
@@ -229,7 +237,7 @@ draw_rect:
     jbe .rect_width_ok
     mov ecx, edi
 .rect_width_ok:
-    mov edi, 200
+    mov edi, SCREEN_HEIGHT
     sub edi, ebx
     cmp edx, edi
     jbe .rect_height_ok
@@ -237,14 +245,15 @@ draw_rect:
 .rect_height_ok:
     imul ebx, SCREEN_WIDTH
     add ebx, eax
-    add ebx, VGA_MEMORY
+    shl ebx, 2
+    add ebx, [FRAMEBUFFER_PTR]
 .rect_row:
     push ecx
     mov edi, ebx
     mov eax, esi
-    rep stosb
+    rep stosd
     pop ecx
-    add ebx, SCREEN_WIDTH
+    add ebx, SCREEN_WIDTH * 4
     dec edx
     jnz .rect_row
 
@@ -342,30 +351,39 @@ draw_char:
 .char_blank:
     mov ebx, blank_glyph
 .char_draw:
-    mov eax, [ebp+8]
-    mov edx, [ebp+12]
-    imul edx, SCREEN_WIDTH
-    add eax, edx
-    add eax, VGA_MEMORY
-    mov edi, eax
-    mov edx, [ebp+20]
-    mov ecx, 8
+    xor edi, edi
 .char_row:
-    push ecx
     mov al, [ebx]
-    mov ecx, 8
+    xor esi, esi
 .char_column:
     test al, 0x80
     jz .char_skip_pixel
-    mov [edi], dl
+    push eax
+    push esi
+    push edi
+    push dword [ebp+20]
+    push dword 1
+    push dword 1
+    mov eax, [ebp+12]
+    add eax, edi
+    push eax
+    mov eax, [ebp+8]
+    add eax, esi
+    push eax
+    call draw_rect
+    add esp, 20
+    pop edi
+    pop esi
+    pop eax
 .char_skip_pixel:
     shl al, 1
-    inc edi
-    loop .char_column
-    pop ecx
-    add edi, SCREEN_WIDTH - 8
+    inc esi
+    cmp esi, 8
+    jl .char_column
     inc ebx
-    loop .char_row
+    inc edi
+    cmp edi, 8
+    jl .char_row
 
     pop edi
     pop esi
@@ -377,6 +395,7 @@ draw_char:
     ret
 
 section .data
+    %include "vga_palette.inc"
     title_text: db 'NOVA DESKTOP', 0
     subtitle_text: db 'WELCOME', 0
     computer_label: db 'MY PC', 0
