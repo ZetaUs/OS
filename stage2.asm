@@ -170,9 +170,19 @@ align 8
 gdt_start:
     dq 0
     ; 32-bit code segment (base=0, limit=4GB)
-    dq 0x00CF9A000000FFFF
+    dw 0xFFFF        ; Limit (15:0)
+    dw 0x0000        ; Base (15:0)
+    db 0x00          ; Base (23:16)
+    db 0x9A          ; Access (present, ring 0, code, readable)
+    db 0xCF          ; Flags (G=1, D=1) + Limit (19:16)
+    db 0x00          ; Base (31:24)
     ; 32-bit data segment (base=0, limit=4GB)
-    dq 0x00CF92000000FFFF
+    dw 0xFFFF        ; Limit (15:0)
+    dw 0x0000        ; Base (15:0)
+    db 0x00          ; Base (23:16)
+    db 0x92          ; Access (present, ring 0, data, writable)
+    db 0xCF          ; Flags (G=1, D=1) + Limit (19:16)
+    db 0x00          ; Base (31:24)
 gdt_end:
 
 gdt_descriptor:
