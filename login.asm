@@ -5,7 +5,6 @@ FRAMEBUFFER_PTR equ 0x5000
 SCREEN_WIDTH equ 1920
 SCREEN_HEIGHT equ 1080
 LOGICAL_SCALE equ 6
-%include "vga_palette.inc"
 %include "mouse_data.inc"
 
 ; Colors
@@ -96,7 +95,7 @@ draw_login_scene:
 
     mov edi, [FRAMEBUFFER_PTR]
     mov ecx, SCREEN_WIDTH * SCREEN_HEIGHT
-    mov eax, [vga_palette + COLOR_BG * 4]
+    mov eax, [login_vga_palette + COLOR_BG * 4]
     rep stosd
 
     push COLOR_BORDER
@@ -334,7 +333,7 @@ draw_mouse_cursor:
     test al, al
     je .cursor_skip
     movzx eax, al
-    mov eax, [vga_palette + eax * 4]
+    mov eax, [login_vga_palette + eax * 4]
     mov [edi], eax
 .cursor_skip:
     add edi, 4
