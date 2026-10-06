@@ -127,16 +127,16 @@ desktop_draw_scene:
     call desktop_draw_computer_icon
     push dword 15
     push dword computer_label
-    push dword 38
-    push dword 168
+    push dword 19
+    push dword 82
     call draw_text_small
     add esp, 16
 
     call desktop_draw_explorer_icon
     push dword 14
     push dword explorer_label
-    push dword 320
-    push dword 282
+    push dword 160
+    push dword 141
     call draw_text_small
     add esp, 16
 
@@ -838,7 +838,7 @@ draw_text_small:
     push ebx
     call draw_char
     add esp, 16
-    add ebx, 16
+    add ebx, 8
     inc esi
     jmp .small_text_next
 .small_text_done:
