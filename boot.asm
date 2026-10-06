@@ -24,13 +24,6 @@ start:
     int 0x13
     jc disk_error
     
-    ; Debug: Draw green pixel at (10,10) to confirm disk read succeeded
-    mov ax, 0xA000
-    mov es, ax
-    mov di, 10 * 320 + 10
-    mov al, 10         ; Light green pixel
-    stosb
-    
     ; Jump to stage2
     jmp 0x0000:0x7E00
 
