@@ -962,6 +962,7 @@ section .data
         dd 0x252B33, 0x0876C9, 0x2E9B57, 0x63C4FF
         dd 0xE66B64, 0xAA72CC, 0xFFD34D, 0xFFFFFF
     %include "mouse_data.inc"
+
     %include "computer_data.inc"
     %include "explorer_data.inc"
     %include "logo_data.inc"

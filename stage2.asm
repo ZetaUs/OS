@@ -16,30 +16,78 @@ start:
     or al, 2
     out 0x92, al
 
-    ; Switch to VBE mode 0x118 (800x600x24) temporarily for VBE query
+    ; Switch to VGA mode 0x13 temporarily
     mov ax, 0x0013
     int 0x10
 
-    ; Query VBE mode 0x118 for framebuffer address
+    ; Display a message to show we're alive
+    mov si, boot_msg
+    call print_string
+
+    ; Try VBE mode 0x118 (800x600x24) - most compatible
     mov ax, 0x4F01
     mov cx, 0x0118
     mov di, vbe_mode_info
     int 0x10
     cmp ax, 0x004F
+    jne .try_next_mode
+    
+    ; Check if mode has linear framebuffer
+    test word [vbe_mode_info], 0x0081
+    jnz .mode_found
+
+.try_next_mode:
+    ; Try VBE mode 0x101 (640x480x8) as fallback
+    mov ax, 0x4F01
+    mov cx, 0x0101
+    mov di, vbe_mode_info
+    int 0x10
+    cmp ax, 0x004F
     jne vbe_error
+    
     test word [vbe_mode_info], 0x0081
     jz vbe_error
+
+.mode_found:
+    ; Get framebuffer physical address
     mov eax, [vbe_mode_info + 40]
     test eax, eax
     jz vbe_error
     mov [framebuffer_base], eax
+    
+    ; Get width, height, bpp
+    movzx eax, word [vbe_mode_info + 18]
+    mov [vbe_width], eax
+    movzx eax, word [vbe_mode_info + 20]
+    mov [vbe_height], eax
+    movzx eax, byte [vbe_mode_info + 25]
+    mov [vbe_bpp], eax
+    movzx eax, word [vbe_mode_info + 16]
+    mov [vbe_pitch], eax
 
-    ; Set VBE mode 118h with linear framebuffer
+    ; Set VBE mode with linear framebuffer bit (0x4000)
     mov ax, 0x4F02
-    mov bx, 0x4118
+    mov bx, cx
+    or bx, 0x4000
     int 0x10
     cmp ax, 0x004F
     jne vbe_error
+
+    ; Display success message
+    mov si, vbe_ok_msg
+    call print_string
+    
+    ; Wait for key press
+    mov ah, 0x00
+    int 0x16
+
+    ; Display success message
+    mov si, vbe_ok_msg
+    call print_string
+    
+    ; Wait for key press
+    mov ah, 0x00
+    int 0x16
 
     mov si, kernel_dap
     mov dl, [boot_drive]
@@ -98,10 +146,6 @@ gdt_start:
     dq 0x00CF9A000000FFFF
     ; 32-bit data segment
     dq 0x00CF92000000FFFF
-    ; 64-bit code segment
-    dq 0x00A09A000000FFFF
-    ; 64-bit data segment
-    dq 0x00A092000000FFFF
 gdt_end:
 
 gdt_descriptor:
@@ -131,12 +175,6 @@ framebuffer_base: dd 0
 align 4
 vbe_mode_info: times 256 db 0
 
-; Page tables for 64-bit long mode (identity mapping)
-align 4096
-pml4_table: times 4096 db 0
-pdpt_table: times 4096 db 0
-pd_table: times 4096 db 0
-
 bits 32
 protected_mode_entry:
     cld
@@ -148,14 +186,14 @@ protected_mode_entry:
     mov ss, ax
     mov esp, 0x90000
 
-    ; Configure Bochs/QEMU VBE for a 1920x1080x32 linear framebuffer.
+    ; Configure VBE for 1920x1080x32 using Bochs VBE extension (optional)
     mov dx, 0x01CE
     xor ax, ax
     out dx, ax
     inc dx
     in ax, dx
     cmp ax, 0xB0C5
-    jne vbe_protected_error
+    jne skip_bochs_vbe
 
     ; Index 4: Enable LFB
     mov dx, 0x01CE
@@ -189,14 +227,6 @@ protected_mode_entry:
     mov ax, 32
     out dx, ax
 
-    ; Index 5: Vertical refresh
-    mov dx, 0x01CE
-    mov ax, 5
-    out dx, ax
-    inc dx
-    mov ax, 60
-    out dx, ax
-
     ; Index 6: Pitch (bytes per line) = 1920 * 4 = 7680
     mov dx, 0x01CE
     mov ax, 6
@@ -205,63 +235,26 @@ protected_mode_entry:
     mov ax, 7680
     out dx, ax
 
-    ; Index 7: Y offset = 0
-    mov dx, 0x01CE
-    mov ax, 7
-    out dx, ax
-    inc dx
-    xor ax, ax
-    out dx, ax
+skip_bochs_vbe:
 
     mov eax, [framebuffer_base]
     mov [0x5000], eax
-    mov dword [0x5004], 1920
-    mov dword [0x5008], 1080
-    mov dword [0x500C], 7680
+    mov eax, [vbe_width]
+    mov [0x5004], eax
+    mov eax, [vbe_height]
+    mov [0x5008], eax
+    mov eax, [vbe_pitch]
+    mov [0x500C], eax
 
-    ; Set up page tables for 64-bit long mode
-    ; PML4[0] -> PDPT
-    mov eax, pdpt_table
-    or eax, 0x03  ; Present + Write
-    mov [pml4_table], eax
+continue_boot:
 
-    ; PDPT[0] -> PD
-    mov eax, pd_table
-    or eax, 0x03
-    mov [pdpt_table], eax
-
-    ; PD[0-511] -> 2MB pages (identity mapping for first 1GB)
-    mov ecx, 512
-    xor edi, edi
-    mov eax, 0x00000083  ; Present + Write + 2MB page
-.setup_pd:
-    mov [pd_table + edi * 8], eax
-    inc edi
-    add eax, 0x200000
-    loop .setup_pd
-
-    ; Load page table base into CR3
-    mov eax, pml4_table
-    mov cr3, eax
-
-    ; Enable PAE
-    mov eax, cr4
-    or eax, 0x20  ; PAE bit
-    mov cr4, eax
-
-    ; Enable long mode
-    mov ecx, 0xC0000080  ; EFER MSR
-    rdmsr
-    or eax, 0x100  ; LME bit
-    wrmsr
-
-    ; Enable paging
-    mov eax, cr0
-    or eax, 0x80000000  ; PG bit
-    mov cr0, eax
-
-    ; Jump to 64-bit mode
-    jmp 0x18:long_mode_entry
+    ; Call the kernel (32-bit protected mode) with 4 parameters
+    push dword [0x500C]  ; pitch
+    push dword [0x5008]  ; height
+    push dword [0x5004]  ; width
+    push dword [0x5000]  ; framebuffer_base
+    call 0x10000
+    add esp, 16
 
 halt_kernel:
     cli
@@ -272,32 +265,3 @@ vbe_protected_error:
     cli
     hlt
     jmp vbe_protected_error
-
-bits 64
-long_mode_entry:
-    ; Set up 64-bit data segments
-    mov ax, 0x20
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
-
-    ; Set up 64-bit stack
-    mov rsp, 0x90000
-
-    ; Pass framebuffer info to kernel (via memory)
-    mov rax, [0x5000]
-    mov [0x5000], rax
-    mov dword [0x5008], 1920
-    mov dword [0x500C], 1080
-    mov dword [0x5010], 7680
-
-    ; Call the kernel
-    mov rax, 0x10000
-    call rax
-
-halt_64:
-    cli
-    hlt
-    jmp halt_64

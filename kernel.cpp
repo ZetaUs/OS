@@ -4,17 +4,18 @@ typedef unsigned int uint32_t;
 typedef signed int int32_t;
 typedef signed char int8_t;
 
-static volatile uint32_t* vram;
+static volatile uint8_t* vram8;  // 8-bit pointer for 24-bit framebuffer
+static uint32_t screen_width;
+static uint32_t screen_height;
+static uint32_t screen_pitch;
 static void pixel(uint32_t x, uint32_t y, uint8_t color);
 
 #include "logo_data.h"
 #include "load_data.h"
 
-static const uint32_t screen_width = 1920;
-static const uint32_t screen_height = 1080;
 static const uint32_t logical_width = 320;
 static const uint32_t logical_height = 180;
-static const uint32_t scale = 6;
+static const uint32_t scale = 2;
 
 static const uint32_t colors[16] = {
     0x000000, 0x0000AA, 0x00AA00, 0x00AAAA,
@@ -33,6 +34,14 @@ static inline uint8_t in8(uint16_t port) {
     return value;
 }
 
+// Write a 24-bit pixel to the framebuffer (BGR format)
+static inline void write_pixel(uint32_t x, uint32_t y, uint32_t color) {
+    uint32_t offset = y * screen_pitch + x * 3;
+    vram8[offset] = color & 0xFF;           // Blue
+    vram8[offset + 1] = (color >> 8) & 0xFF;  // Green
+    vram8[offset + 2] = (color >> 16) & 0xFF; // Red
+}
+
 static void fill(uint8_t color);
 static void rectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint8_t color);
 static void character(uint32_t x, uint32_t y, char value, uint8_t color, uint8_t scale);
@@ -47,8 +56,12 @@ static void serial_write(const char* text);
 extern "C" void login_screen();
 extern "C" void desktop_screen();
 
-extern "C" __attribute__((noreturn)) void kernel_main(uint32_t framebuffer_base) {
-    vram = reinterpret_cast<volatile uint32_t*>(framebuffer_base);
+extern "C" __attribute__((noreturn)) void kernel_main(uint32_t framebuffer_base, uint32_t width, uint32_t height, uint32_t pitch) {
+    vram8 = reinterpret_cast<volatile uint8_t*>(framebuffer_base);
+    screen_width = width;
+    screen_height = height;
+    screen_pitch = pitch;
+    
     fill(1);
     draw_logo(120, 35);
     progress(0);
@@ -82,8 +95,10 @@ extern "C" __attribute__((noreturn)) void kernel_main(uint32_t framebuffer_base)
 
 static void fill(uint8_t color) {
     const uint32_t pixel_color = colors[color & 0x0Fu];
-    for (uint32_t index = 0; index < screen_width * screen_height; ++index) {
-        vram[index] = pixel_color;
+    for (uint32_t y = 0; y < screen_height; ++y) {
+        for (uint32_t x = 0; x < screen_width; ++x) {
+            write_pixel(x, y, pixel_color);
+        }
     }
 }
 
@@ -96,9 +111,8 @@ static void pixel(uint32_t x, uint32_t y, uint8_t color) {
     const uint32_t base_x = x * scale;
     const uint32_t base_y = y * scale;
     for (uint32_t row = 0; row < scale; ++row) {
-        const uint32_t offset = (base_y + row) * screen_width + base_x;
         for (uint32_t column = 0; column < scale; ++column) {
-            vram[offset + column] = pixel_color;
+            write_pixel(base_x + column, base_y + row, pixel_color);
         }
     }
 }
@@ -120,9 +134,8 @@ static void rectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, u
     const uint32_t base_x = x * scale;
     const uint32_t base_y = y * scale;
     for (uint32_t row = 0; row < pixel_height; ++row) {
-        uint32_t offset = (base_y + row) * screen_width + base_x;
         for (uint32_t column = 0; column < pixel_width; ++column) {
-            vram[offset + column] = pixel_color;
+            write_pixel(base_x + column, base_y + row, pixel_color);
         }
     }
 }
