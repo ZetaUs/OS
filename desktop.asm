@@ -83,7 +83,7 @@ desktop_draw_scene:
     rep stosd
 
     ; Draw an 800x600 desktop centered in the 1920x1080 framebuffer.
-    push dword 1
+    push dword 9
     push dword 240
     push dword 320
     push dword 0
@@ -91,79 +91,40 @@ desktop_draw_scene:
     call draw_rect
     add esp, 20
 
-    push dword 9
-    push dword 72
-    push dword 320
-    push dword 168
-    push dword 0
-    call draw_rect
-    add esp, 20
-
-    push dword 1
-    push dword 49
-    push dword 320
-    push dword 191
-    push dword 0
-    call draw_rect
-    add esp, 20
-
-    push dword 3
-    push dword 96
-    push dword 320
-    push dword 96
-    push dword 0
-    call draw_rect
-    add esp, 20
-
-    ; Header.
-    push dword 15
-    push dword title_text
-    push dword 11
-    push dword 8
-    call draw_text
-    add esp, 16
-
-    push dword 11
-    push dword subtitle_text
-    push dword 11
-    push dword 216
-    call draw_text
-    add esp, 16
-
     ; Computer icon.
     push dword 15
     push dword 35
     push dword 40
-    push dword 28
     push dword 16
+    push dword 14
     call draw_rect
     add esp, 20
     push dword 9
     push dword 29
     push dword 29
-    push dword 31
-    push dword 21
+    push dword 19
+    push dword 19
     call draw_rect
     add esp, 20
     push dword 7
     push dword 4
     push dword 13
-    push dword 35
-    push dword 29
+    push dword 23
+    push dword 27
     call draw_rect
     add esp, 20
     push dword 15
     push dword 3
     push dword 21
-    push dword 41
-    push dword 24
+    push dword 30
+    push dword 22
     call draw_rect
     add esp, 20
 
     push dword 15
     push dword computer_label
-    push dword 79
-    push dword 12
+    push dword 61
+    push dword 10
     call draw_text
     add esp, 16
 
@@ -171,42 +132,21 @@ desktop_draw_scene:
     push dword 14
     push dword 8
     push dword 36
-    push dword 123
-    push dword 19
+    push dword 81
+    push dword 17
     call draw_rect
     add esp, 20
     push dword 6
     push dword 32
     push dword 39
-    push dword 128
-    push dword 16
+    push dword 86
+    push dword 14
     call draw_rect
     add esp, 20
     push dword 14
     push dword folder_label
-    push dword 165
-    push dword 12
-    call draw_text
-    add esp, 16
-
-    ; A small centered welcome panel.
-    push dword 8
-    push dword 80
-    push dword 170
-    push dword 121
-    push dword 74
-    call draw_rect
-    add esp, 20
-    push dword 15
-    push dword welcome_text
-    push dword 129
-    push dword 131
-    call draw_text
-    add esp, 16
-    push dword 11
-    push dword ready_text
-    push dword 147
-    push dword 107
+    push dword 124
+    push dword 10
     call draw_text
     add esp, 16
 
@@ -500,9 +440,9 @@ desktop_hit_test:
     jl .check_files_icon
     cmp dword [desktop_mouse_x], 755
     jg .check_files_icon
-    cmp dword [desktop_mouse_y], 300
+    cmp dword [desktop_mouse_y], 270
     jl .check_files_icon
-    cmp dword [desktop_mouse_y], 465
+    cmp dword [desktop_mouse_y], 425
     jg .check_files_icon
 .open_pc:
     mov byte [desktop_window], 1
@@ -511,24 +451,24 @@ desktop_hit_test:
     ret
 
 .check_files_icon:
-    cmp dword [desktop_mouse_x], 590
+    cmp dword [desktop_mouse_x], 580
     jl .check_files_label
-    cmp dword [desktop_mouse_x], 715
+    cmp dword [desktop_mouse_x], 740
     jg .check_files_label
-    cmp dword [desktop_mouse_y], 535
+    cmp dword [desktop_mouse_y], 440
     jl .check_files_label
-    cmp dword [desktop_mouse_y], 650
+    cmp dword [desktop_mouse_y], 585
     jg .check_files_label
     jmp .open_files
 
 .check_files_label:
-    cmp dword [desktop_mouse_x], 570
+    cmp dword [desktop_mouse_x], 580
     jl .no_action
-    cmp dword [desktop_mouse_x], 690
+    cmp dword [desktop_mouse_x], 710
     jg .no_action
-    cmp dword [desktop_mouse_y], 645
+    cmp dword [desktop_mouse_y], 540
     jl .no_action
-    cmp dword [desktop_mouse_y], 680
+    cmp dword [desktop_mouse_y], 585
     jg .no_action
 .open_files:
     mov byte [desktop_window], 2
@@ -834,12 +774,8 @@ section .data
     %include "vga_palette.inc"
     VGA_PALETTE_TABLE desktop_vga_palette
     %include "mouse_data.inc"
-    title_text: db 'NOVA DESKTOP', 0
-    subtitle_text: db 'WELCOME', 0
     computer_label: db 'MY PC', 0
     folder_label: db 'FILES', 0
-    welcome_text: db 'NOVA OS', 0
-    ready_text: db 'DESKTOP READY', 0
     start_text: db 'START', 0
     taskbar_text: db 'NOVA OS', 0
     clock_text: db '08:00', 0
