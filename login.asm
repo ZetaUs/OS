@@ -247,9 +247,9 @@ update_mouse:
     jns .mouse_x_nonnegative
     xor eax, eax
 .mouse_x_nonnegative:
-    cmp eax, 307
+    cmp eax, 300
     jle .mouse_x_store
-    mov eax, 307
+    mov eax, 300
 .mouse_x_store:
     mov [g_mouse_x], eax
 
@@ -262,9 +262,9 @@ update_mouse:
     jns .mouse_y_nonnegative
     xor eax, eax
 .mouse_y_nonnegative:
-    cmp eax, 184
+    cmp eax, 176
     jle .mouse_y_store
-    mov eax, 184
+    mov eax, 176
 .mouse_y_store:
     mov [g_mouse_y], eax
 
