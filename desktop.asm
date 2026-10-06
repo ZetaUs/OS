@@ -208,99 +208,99 @@ desktop_draw_scene:
 
     ; Windows-style taskbar anchored to the bottom edge.
     push dword 8
-    push dword 18
+    push dword 8
     push dword 320
-    push dword 162
+    push dword 172
     push dword 0
     call draw_rect
     add esp, 20
     push dword 7
     push dword 1
     push dword 320
-    push dword 162
+    push dword 171
     push dword 0
     call draw_rect
     add esp, 20
 
     ; Start button and four-pane mark.
     push dword 8
-    push dword 17
-    push dword 20
-    push dword 163
+    push dword 8
+    push dword 8
+    push dword 172
     push dword 0
     call draw_rect
     add esp, 20
     push dword 3
-    push dword 4
-    push dword 4
-    push dword 228
+    push dword 2
+    push dword 2
+    push dword 173
+    push dword 2
+    call draw_rect
+    add esp, 20
+    push dword 3
+    push dword 2
+    push dword 2
+    push dword 173
     push dword 5
     call draw_rect
     add esp, 20
     push dword 3
-    push dword 4
-    push dword 4
-    push dword 228
-    push dword 10
+    push dword 2
+    push dword 2
+    push dword 176
+    push dword 2
     call draw_rect
     add esp, 20
     push dword 3
-    push dword 4
-    push dword 4
-    push dword 233
+    push dword 2
+    push dword 2
+    push dword 176
     push dword 5
-    call draw_rect
-    add esp, 20
-    push dword 3
-    push dword 4
-    push dword 4
-    push dword 233
-    push dword 10
     call draw_rect
     add esp, 20
 
     ; Search field.
     push dword 7
-    push dword 14
-    push dword 88
-    push dword 163
-    push dword 12
+    push dword 8
+    push dword 56
+    push dword 172
+    push dword 8
     call draw_rect
     add esp, 20
     push dword 0
     push dword search_text
-    push dword 167
-    push dword 21
+    push dword 172
+    push dword 12
     call draw_text
     add esp, 16
 
     ; Pinned File Explorer icon.
     push dword 6
-    push dword 7
-    push dword 13
-    push dword 165
-    push dword 116
+    push dword 5
+    push dword 10
+    push dword 173
+    push dword 111
     call draw_rect
     add esp, 20
     push dword 14
     push dword 2
-    push dword 8
-    push dword 163
-    push dword 118
+    push dword 4
+    push dword 172
+    push dword 113
     call draw_rect
     add esp, 20
 
     ; Clock area.
     push dword 8
-    push dword 16
+    push dword 8
     push dword 42
-    push dword 163
+    push dword 172
     push dword 278
     call draw_rect
     add esp, 20
     push dword 15
     push dword clock_text
-    push dword 167
+    push dword 172
     push dword 279
     call draw_text
     add esp, 16
@@ -388,32 +388,32 @@ desktop_draw_start_menu:
     push dword 8
     push dword 68
     push dword 104
-    push dword 92
+    push dword 78
     push dword 4
     call draw_rect
     add esp, 20
     push dword 1
     push dword 16
     push dword 100
-    push dword 96
+    push dword 80
     push dword 6
     call draw_rect
     add esp, 20
     push dword 15
     push dword menu_title
-    push dword 99
+    push dword 83
     push dword 10
     call draw_text
     add esp, 16
     push dword 15
     push dword pc_menu_item
-    push dword 117
+    push dword 101
     push dword 12
     call draw_text
     add esp, 16
     push dword 15
     push dword files_menu_item
-    push dword 137
+    push dword 119
     push dword 12
     call draw_text
     add esp, 16
@@ -492,17 +492,13 @@ desktop_hit_test:
     jl .close_menu_outside
     cmp dword [desktop_mouse_x], 648
     jg .close_menu_outside
-    cmp dword [desktop_mouse_y], 552
+    cmp dword [desktop_mouse_y], 594
     jl .close_menu_outside
-    cmp dword [desktop_mouse_y], 660
-    jle .close_menu_outside
-    cmp dword [desktop_mouse_y], 690
-    jl .close_menu_outside
-    cmp dword [desktop_mouse_y], 780
+    cmp dword [desktop_mouse_y], 696
     jle .open_pc
-    cmp dword [desktop_mouse_y], 810
+    cmp dword [desktop_mouse_y], 702
     jl .close_menu_outside
-    cmp dword [desktop_mouse_y], 900
+    cmp dword [desktop_mouse_y], 798
     jle .open_files
 .close_menu_outside:
     mov byte [desktop_start_open], 0
@@ -512,9 +508,9 @@ desktop_hit_test:
 .check_start_button:
     cmp dword [desktop_mouse_x], 0
     jl .check_window
-    cmp dword [desktop_mouse_x], 120
+    cmp dword [desktop_mouse_x], 48
     jg .check_window
-    cmp dword [desktop_mouse_y], 978
+    cmp dword [desktop_mouse_y], 1032
     jl .check_window
     cmp dword [desktop_mouse_y], SCREEN_HEIGHT
     jg .check_window
