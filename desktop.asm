@@ -146,39 +146,11 @@ desktop_draw_scene:
     add esp, 20
 
     ; Compact desktop shortcuts aligned along the left edge.
-    push dword 15
-    push dword 15
-    push dword 18
-    push dword 8
-    push dword 8
-    call draw_rect
-    add esp, 20
-    push dword 9
-    push dword 10
-    push dword 14
-    push dword 10
-    push dword 10
-    call draw_rect
-    add esp, 20
-    push dword 7
-    push dword 4
-    push dword 3
-    push dword 22
-    push dword 15
-    call draw_rect
-    add esp, 20
-    push dword 15
-    push dword 2
-    push dword 12
-    push dword 26
-    push dword 11
-    call draw_rect
-    add esp, 20
-
+    call desktop_draw_computer_icon
     push dword 15
     push dword computer_label
     push dword 30
-    push dword 4
+    push dword 8
     call draw_text
     add esp, 16
 
@@ -259,37 +231,6 @@ desktop_draw_scene:
     call draw_rect
     add esp, 20
 
-    ; Search field.
-    push dword 7
-    push dword 8
-    push dword 56
-    push dword 172
-    push dword 8
-    call draw_rect
-    add esp, 20
-    push dword 0
-    push dword search_text
-    push dword 172
-    push dword 12
-    call draw_text
-    add esp, 16
-
-    ; Pinned File Explorer icon.
-    push dword 6
-    push dword 5
-    push dword 10
-    push dword 173
-    push dword 111
-    call draw_rect
-    add esp, 20
-    push dword 14
-    push dword 2
-    push dword 4
-    push dword 172
-    push dword 113
-    call draw_rect
-    add esp, 20
-
     ; Clock area.
     push dword 8
     push dword 8
@@ -309,6 +250,42 @@ desktop_draw_scene:
     pop esi
     pop ebx
     pop ebp
+    ret
+
+desktop_draw_computer_icon:
+    push ebx
+    push esi
+    push edi
+    xor esi, esi
+.computer_row:
+    xor edi, edi
+.computer_column:
+    mov eax, esi
+    imul eax, COMPUTER_ICON_WIDTH
+    add eax, edi
+    cmp byte [computer_icon_data + eax], 0
+    je .computer_next
+    push dword 15
+    push dword 1
+    push dword 1
+    mov eax, esi
+    add eax, 8
+    push eax
+    mov eax, edi
+    add eax, 8
+    push eax
+    call draw_rect
+    add esp, 20
+.computer_next:
+    inc edi
+    cmp edi, COMPUTER_ICON_WIDTH
+    jl .computer_column
+    inc esi
+    cmp esi, COMPUTER_ICON_HEIGHT
+    jl .computer_row
+    pop edi
+    pop esi
+    pop ebx
     ret
 
 desktop_redraw:
@@ -538,11 +515,11 @@ desktop_hit_test:
 .check_icons:
     cmp dword [desktop_mouse_x], 24
     jl .check_files_icon
-    cmp dword [desktop_mouse_x], 180
+    cmp dword [desktop_mouse_x], 450
     jg .check_files_icon
     cmp dword [desktop_mouse_y], 40
     jl .check_files_icon
-    cmp dword [desktop_mouse_y], 240
+    cmp dword [desktop_mouse_y], 270
     jg .check_files_icon
 .open_pc:
     mov byte [desktop_window], 1
@@ -873,17 +850,17 @@ section .data
         dd 0x252B33, 0x0876C9, 0x2E9B57, 0x63C4FF
         dd 0xE66B64, 0xAA72CC, 0xFFD34D, 0xFFFFFF
     %include "mouse_data.inc"
-    computer_label: db 'MY PC', 0
+    %include "computer_data.inc"
+    computer_label: db 'COMPUTER', 0
     folder_label: db 'FILES', 0
-    search_text: db 'SEARCH', 0
     clock_text: db '08:00', 0
     close_text: db 'X', 0
-    pc_window_title: db 'MY PC', 0
+    pc_window_title: db 'COMPUTER', 0
     files_window_title: db 'FILES', 0
     disk_label: db 'LOCAL DISK C', 0
     empty_folder_text: db 'NO FILES YET', 0
     menu_title: db 'NOVA OS', 0
-    pc_menu_item: db 'MY PC', 0
+    pc_menu_item: db 'COMPUTER', 0
     files_menu_item: db 'FILES', 0
     blank_glyph: times 8 db 0
 
