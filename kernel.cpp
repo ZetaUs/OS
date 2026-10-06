@@ -4,10 +4,11 @@ typedef unsigned int uint32_t;
 typedef signed int int32_t;
 typedef signed char int8_t;
 
-static volatile uint8_t* vram8;  // 8-bit pointer for 24-bit framebuffer
+static volatile uint8_t* vram8;  // 8-bit pointer for framebuffer
 static uint32_t screen_width;
 static uint32_t screen_height;
 static uint32_t screen_pitch;
+static uint32_t screen_bpp;
 static void pixel(uint32_t x, uint32_t y, uint8_t color);
 
 #include "logo_data.h"
@@ -34,12 +35,29 @@ static inline uint8_t in8(uint16_t port) {
     return value;
 }
 
-// Write a 24-bit pixel to the framebuffer (BGR format)
+// Write a pixel to the framebuffer based on BPP
 static inline void write_pixel(uint32_t x, uint32_t y, uint32_t color) {
-    uint32_t offset = y * screen_pitch + x * 3;
-    vram8[offset] = color & 0xFF;           // Blue
-    vram8[offset + 1] = (color >> 8) & 0xFF;  // Green
-    vram8[offset + 2] = (color >> 16) & 0xFF; // Red
+    uint32_t offset = y * screen_pitch + x * (screen_bpp / 8);
+    
+    if (screen_bpp == 16) {
+        // 16-bit RGB565 format
+        uint16_t rgb565 = ((color >> 19) & 0x1F) << 11 |  // Red
+                          ((color >> 10) & 0x3F) << 5 |   // Green
+                          ((color >> 3) & 0x1F);           // Blue
+        vram8[offset] = rgb565 & 0xFF;
+        vram8[offset + 1] = (rgb565 >> 8) & 0xFF;
+    } else if (screen_bpp == 24) {
+        // 24-bit BGR format
+        vram8[offset] = color & 0xFF;           // Blue
+        vram8[offset + 1] = (color >> 8) & 0xFF;  // Green
+        vram8[offset + 2] = (color >> 16) & 0xFF; // Red
+    } else if (screen_bpp == 32) {
+        // 32-bit BGRA format
+        vram8[offset] = color & 0xFF;           // Blue
+        vram8[offset + 1] = (color >> 8) & 0xFF;  // Green
+        vram8[offset + 2] = (color >> 16) & 0xFF; // Red
+        vram8[offset + 3] = 0xFF;                  // Alpha
+    }
 }
 
 static void fill(uint8_t color);
@@ -56,11 +74,12 @@ static void serial_write(const char* text);
 extern "C" void login_screen();
 extern "C" void desktop_screen();
 
-extern "C" __attribute__((noreturn)) void kernel_main(uint32_t framebuffer_base, uint32_t width, uint32_t height, uint32_t pitch) {
+extern "C" __attribute__((noreturn)) void kernel_main(uint32_t framebuffer_base, uint32_t width, uint32_t height, uint32_t pitch, uint32_t bpp) {
     vram8 = reinterpret_cast<volatile uint8_t*>(framebuffer_base);
     screen_width = width;
     screen_height = height;
     screen_pitch = pitch;
+    screen_bpp = bpp;
     
     fill(1);
     draw_logo(120, 35);

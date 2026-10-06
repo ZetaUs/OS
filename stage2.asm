@@ -20,9 +20,9 @@ start:
     mov ax, 0x0013
     int 0x10
 
-    ; Try VBE mode 0x118 (800x600x24) - most compatible
+    ; Try VBE mode 0x112 (640x480x16) - most compatible with QEMU
     mov ax, 0x4F01
-    mov cx, 0x0118
+    mov cx, 0x0112
     mov di, vbe_mode_info
     int 0x10
     cmp ax, 0x004F
@@ -189,16 +189,19 @@ protected_mode_entry:
     mov [0x5008], eax
     movzx eax, word [vbe_pitch]
     mov [0x500C], eax
+    movzx eax, byte [vbe_bpp]
+    mov [0x5010], eax
 
 continue_boot:
 
-    ; Call the kernel (32-bit protected mode) with 4 parameters
+    ; Call the kernel (32-bit protected mode) with 5 parameters
+    push dword [0x5010]  ; bpp
     push dword [0x500C]  ; pitch
     push dword [0x5008]  ; height
     push dword [0x5004]  ; width
     push dword [0x5000]  ; framebuffer_base
     call 0x10000
-    add esp, 16
+    add esp, 20
 
 halt_kernel:
     cli
