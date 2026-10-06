@@ -275,17 +275,17 @@ desktop_draw_scene:
 
     ; Pinned File Explorer icon.
     push dword 6
-    push dword 3
-    push dword 11
-    push dword 228
-    push dword 123
+    push dword 7
+    push dword 13
+    push dword 227
+    push dword 120
     call draw_rect
     add esp, 20
     push dword 14
     push dword 2
-    push dword 13
-    push dword 226
-    push dword 121
+    push dword 8
+    push dword 225
+    push dword 122
     call draw_rect
     add esp, 20
 
