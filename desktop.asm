@@ -516,7 +516,7 @@ desktop_hit_test:
     jg .check_window
     cmp dword [desktop_mouse_y], 978
     jl .check_window
-    cmp dword [desktop_mouse_y], 840
+    cmp dword [desktop_mouse_y], SCREEN_HEIGHT
     jg .check_window
     mov al, [desktop_start_open]
     xor al, 1
