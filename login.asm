@@ -3,6 +3,7 @@ bits 32
 ; VGA framebuffer address
 VGA_MEMORY equ 0xA0000
 SCREEN_WIDTH equ 320
+%include "mouse_data.inc"
 
 ; Colors
 COLOR_BG equ 1
@@ -317,23 +318,24 @@ draw_mouse_cursor:
     add edi, VGA_MEMORY
     xor ebx, ebx
 .cursor_row:
-    mov ecx, 13
+    mov ecx, MOUSE_WIDTH
     xor esi, esi
 .cursor_column:
     mov eax, ebx
-    imul eax, 13
+    imul eax, MOUSE_WIDTH
     add eax, esi
-    cmp byte [mouse_data + eax], 0
+    mov al, [mouse_data + eax]
+    test al, al
     je .cursor_skip
-    mov byte [edi], 15
+    mov [edi], al
 .cursor_skip:
     inc edi
     inc esi
     dec ecx
     jnz .cursor_column
-    add edi, SCREEN_WIDTH - 13
+    add edi, SCREEN_WIDTH - MOUSE_WIDTH
     inc ebx
-    cmp ebx, 16
+    cmp ebx, MOUSE_HEIGHT
     jl .cursor_row
     pop edi
     pop esi
@@ -473,9 +475,6 @@ draw_chinese_lu:
     ret
 
 section .data
-    ; Include mouse cursor data
-    %include "mouse_data.inc"
-    
     ; 登 expanded bitmap (12x12 = 144 bytes, 0 or 1)
     deng_expanded: db 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0
                    db 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0
