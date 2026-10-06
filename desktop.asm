@@ -20,6 +20,63 @@ _desktop_screen:
     push edi
     cld
 
+    mov dword [desktop_mouse_x], 960
+    mov dword [desktop_mouse_y], 500
+    mov byte [desktop_packet_stage], 0
+    mov byte [desktop_mouse_buttons], 0
+    mov byte [desktop_cursor_drawn], 0
+    mov byte [desktop_window], 0
+    mov byte [desktop_start_open], 0
+    call desktop_draw_scene
+    call desktop_draw_cursor
+
+.desktop_input:
+    in al, 0x64
+    test al, 1
+    jz .desktop_input
+    mov ah, al
+    in al, 0x60
+    test ah, 0x20
+    jz .desktop_keyboard
+
+    mov bl, [desktop_packet_stage]
+    cmp bl, 0
+    je .desktop_first_byte
+    cmp bl, 1
+    je .desktop_x_byte
+    mov [desktop_packet + 2], al
+    mov byte [desktop_packet_stage], 0
+    call desktop_update_mouse
+    jmp .desktop_input
+
+.desktop_first_byte:
+    test al, 0x08
+    jz .desktop_input
+    mov [desktop_packet], al
+    mov byte [desktop_packet_stage], 1
+    jmp .desktop_input
+
+.desktop_x_byte:
+    mov [desktop_packet + 1], al
+    mov byte [desktop_packet_stage], 2
+    jmp .desktop_input
+
+.desktop_keyboard:
+    cmp al, 0x01
+    jne .desktop_input
+    mov byte [desktop_window], 0
+    mov byte [desktop_start_open], 0
+    call desktop_redraw
+    jmp .desktop_input
+
+desktop_draw_scene:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push esi
+    push edi
+    cld
+
     mov edi, [FRAMEBUFFER_PTR]
     mov ecx, SCREEN_WIDTH * SCREEN_HEIGHT
     mov eax, [desktop_vga_palette + 4]
@@ -153,6 +210,9 @@ _desktop_screen:
     call draw_text
     add esp, 16
 
+    call desktop_draw_window
+    call desktop_draw_start_menu
+
     ; Taskbar.
     push dword 8
     push dword 27
@@ -209,6 +269,356 @@ _desktop_screen:
     pop esi
     pop ebx
     pop ebp
+    ret
+
+desktop_redraw:
+    mov byte [desktop_cursor_drawn], 0
+    call desktop_draw_scene
+    call desktop_draw_cursor
+    ret
+
+desktop_draw_window:
+    cmp byte [desktop_window], 0
+    je .window_done
+
+    push dword 8
+    push dword 110
+    push dword 170
+    push dword 65
+    push dword 75
+    call draw_rect
+    add esp, 20
+    push dword 1
+    push dword 18
+    push dword 162
+    push dword 69
+    push dword 79
+    call draw_rect
+    add esp, 20
+    push dword 7
+    push dword 92
+    push dword 162
+    push dword 87
+    push dword 79
+    call draw_rect
+    add esp, 20
+    push dword 15
+    push dword close_text
+    push dword 73
+    push dword 222
+    call draw_text
+    add esp, 16
+
+    cmp byte [desktop_window], 1
+    jne .files_window
+    push dword 15
+    push dword pc_window_title
+    push dword 74
+    push dword 82
+    call draw_text
+    add esp, 16
+    push dword 0
+    push dword disk_label
+    push dword 113
+    push dword 94
+    call draw_text
+    add esp, 16
+    jmp .window_done
+
+.files_window:
+    push dword 15
+    push dword files_window_title
+    push dword 74
+    push dword 82
+    call draw_text
+    add esp, 16
+    push dword 0
+    push dword empty_folder_text
+    push dword 113
+    push dword 94
+    call draw_text
+    add esp, 16
+
+.window_done:
+    ret
+
+desktop_draw_start_menu:
+    cmp byte [desktop_start_open], 0
+    je .menu_done
+    push dword 8
+    push dword 68
+    push dword 104
+    push dword 143
+    push dword 4
+    call draw_rect
+    add esp, 20
+    push dword 1
+    push dword 16
+    push dword 100
+    push dword 147
+    push dword 6
+    call draw_rect
+    add esp, 20
+    push dword 15
+    push dword menu_title
+    push dword 151
+    push dword 10
+    call draw_text
+    add esp, 16
+    push dword 15
+    push dword pc_menu_item
+    push dword 169
+    push dword 12
+    call draw_text
+    add esp, 16
+    push dword 15
+    push dword files_menu_item
+    push dword 188
+    push dword 12
+    call draw_text
+    add esp, 16
+
+.menu_done:
+    ret
+
+desktop_update_mouse:
+    push ebx
+    push ecx
+    push edx
+    mov bl, [desktop_packet]
+
+    test bl, 0x40
+    jnz .update_y
+    movsx eax, byte [desktop_packet + 1]
+    imul eax, 3
+    add eax, [desktop_mouse_x]
+    test eax, eax
+    jns .mouse_x_nonnegative
+    xor eax, eax
+.mouse_x_nonnegative:
+    cmp eax, SCREEN_WIDTH - MOUSE_WIDTH
+    jle .mouse_x_store
+    mov eax, SCREEN_WIDTH - MOUSE_WIDTH
+.mouse_x_store:
+    mov [desktop_mouse_x], eax
+
+.update_y:
+    test bl, 0x80
+    jnz .check_button
+    movsx eax, byte [desktop_packet + 2]
+    neg eax
+    imul eax, 3
+    add eax, [desktop_mouse_y]
+    test eax, eax
+    jns .mouse_y_nonnegative
+    xor eax, eax
+.mouse_y_nonnegative:
+    cmp eax, SCREEN_HEIGHT - MOUSE_HEIGHT
+    jle .mouse_y_store
+    mov eax, SCREEN_HEIGHT - MOUSE_HEIGHT
+.mouse_y_store:
+    mov [desktop_mouse_y], eax
+
+.check_button:
+    mov al, bl
+    and al, 1
+    mov cl, [desktop_mouse_buttons]
+    mov [desktop_mouse_buttons], al
+    test al, al
+    jz .draw_cursor
+    test cl, 1
+    jnz .draw_cursor
+    call desktop_hit_test
+    test eax, eax
+    jnz .redraw_scene
+
+.draw_cursor:
+    call desktop_draw_cursor
+    jmp .update_done
+
+.redraw_scene:
+    call desktop_redraw
+
+.update_done:
+    pop edx
+    pop ecx
+    pop ebx
+    ret
+
+desktop_hit_test:
+    cmp byte [desktop_start_open], 0
+    je .check_start_button
+    cmp dword [desktop_mouse_x], 570
+    jl .close_menu_outside
+    cmp dword [desktop_mouse_x], 830
+    jg .close_menu_outside
+    cmp dword [desktop_mouse_y], 650
+    jl .close_menu_outside
+    cmp dword [desktop_mouse_y], 690
+    jle .open_pc
+    cmp dword [desktop_mouse_y], 695
+    jl .close_menu_outside
+    cmp dword [desktop_mouse_y], 740
+    jle .open_files
+.close_menu_outside:
+    mov byte [desktop_start_open], 0
+    mov eax, 1
+    ret
+
+.check_start_button:
+    cmp dword [desktop_mouse_x], 570
+    jl .check_window
+    cmp dword [desktop_mouse_x], 715
+    jg .check_window
+    cmp dword [desktop_mouse_y], 780
+    jl .check_window
+    cmp dword [desktop_mouse_y], 840
+    jg .check_window
+    mov al, [desktop_start_open]
+    xor al, 1
+    mov [desktop_start_open], al
+    mov eax, 1
+    ret
+
+.check_window:
+    cmp byte [desktop_window], 0
+    je .check_icons
+    cmp dword [desktop_mouse_x], 1125
+    jl .check_icons
+    cmp dword [desktop_mouse_x], 1175
+    jg .check_icons
+    cmp dword [desktop_mouse_y], 402
+    jl .check_icons
+    cmp dword [desktop_mouse_y], 442
+    jg .check_icons
+    mov byte [desktop_window], 0
+    mov eax, 1
+    ret
+
+.check_icons:
+    cmp dword [desktop_mouse_x], 575
+    jl .check_files_icon
+    cmp dword [desktop_mouse_x], 755
+    jg .check_files_icon
+    cmp dword [desktop_mouse_y], 300
+    jl .check_files_icon
+    cmp dword [desktop_mouse_y], 390
+    jg .check_files_icon
+.open_pc:
+    mov byte [desktop_window], 1
+    mov byte [desktop_start_open], 0
+    mov eax, 1
+    ret
+
+.check_files_icon:
+    cmp dword [desktop_mouse_x], 850
+    jl .check_files_label
+    cmp dword [desktop_mouse_x], 975
+    jg .check_files_label
+    cmp dword [desktop_mouse_y], 320
+    jl .check_files_label
+    cmp dword [desktop_mouse_y], 390
+    jg .check_files_label
+    jmp .open_files
+
+.check_files_label:
+    cmp dword [desktop_mouse_x], 570
+    jl .no_action
+    cmp dword [desktop_mouse_x], 690
+    jg .no_action
+    cmp dword [desktop_mouse_y], 645
+    jl .no_action
+    cmp dword [desktop_mouse_y], 680
+    jg .no_action
+.open_files:
+    mov byte [desktop_window], 2
+    mov byte [desktop_start_open], 0
+    mov eax, 1
+    ret
+
+.no_action:
+    xor eax, eax
+    ret
+
+desktop_draw_cursor:
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
+
+    cmp byte [desktop_cursor_drawn], 0
+    je .draw_current_cursor
+    mov edi, [desktop_cursor_y]
+    imul edi, SCREEN_WIDTH
+    add edi, [desktop_cursor_x]
+    shl edi, 2
+    add edi, [FRAMEBUFFER_PTR]
+    xor ebx, ebx
+.restore_row:
+    mov ecx, MOUSE_WIDTH
+    xor esi, esi
+.restore_column:
+    mov edx, ebx
+    imul edx, MOUSE_WIDTH
+    add edx, esi
+    mov eax, [desktop_cursor_saved + edx * 4]
+    mov [edi], eax
+    add edi, 4
+    inc esi
+    dec ecx
+    jnz .restore_column
+    add edi, SCREEN_WIDTH * 4 - MOUSE_WIDTH * 4
+    inc ebx
+    cmp ebx, MOUSE_HEIGHT
+    jl .restore_row
+
+.draw_current_cursor:
+    mov eax, [desktop_mouse_x]
+    mov [desktop_cursor_x], eax
+    mov eax, [desktop_mouse_y]
+    mov [desktop_cursor_y], eax
+    mov edi, [desktop_mouse_y]
+    imul edi, SCREEN_WIDTH
+    add edi, [desktop_mouse_x]
+    shl edi, 2
+    add edi, [FRAMEBUFFER_PTR]
+    xor ebx, ebx
+.cursor_row:
+    mov ecx, MOUSE_WIDTH
+    xor esi, esi
+.cursor_column:
+    mov eax, [edi]
+    mov edx, ebx
+    imul edx, MOUSE_WIDTH
+    add edx, esi
+    mov [desktop_cursor_saved + edx * 4], eax
+    mov edx, ebx
+    imul edx, MOUSE_WIDTH
+    add edx, esi
+    movzx eax, byte [mouse_data + edx]
+    test al, al
+    jz .cursor_skip
+    mov eax, [desktop_vga_palette + eax * 4]
+    mov [edi], eax
+.cursor_skip:
+    add edi, 4
+    inc esi
+    dec ecx
+    jnz .cursor_column
+    add edi, SCREEN_WIDTH * 4 - MOUSE_WIDTH * 4
+    inc ebx
+    cmp ebx, MOUSE_HEIGHT
+    jl .cursor_row
+    mov byte [desktop_cursor_drawn], 1
+
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
     ret
 
 ; draw_rect(x, y, width, height, color)
@@ -423,6 +833,7 @@ draw_char:
 section .data
     %include "vga_palette.inc"
     VGA_PALETTE_TABLE desktop_vga_palette
+    %include "mouse_data.inc"
     title_text: db 'NOVA DESKTOP', 0
     subtitle_text: db 'WELCOME', 0
     computer_label: db 'MY PC', 0
@@ -432,6 +843,14 @@ section .data
     start_text: db 'START', 0
     taskbar_text: db 'NOVA OS', 0
     clock_text: db '08:00', 0
+    close_text: db 'X', 0
+    pc_window_title: db 'MY PC', 0
+    files_window_title: db 'FILES', 0
+    disk_label: db 'LOCAL DISK C', 0
+    empty_folder_text: db 'NO FILES YET', 0
+    menu_title: db 'NOVA OS', 0
+    pc_menu_item: db 'MY PC', 0
+    files_menu_item: db 'FILES', 0
     blank_glyph: times 8 db 0
 
     ; 5x7-style bitmaps stored as 8x8 rows.
@@ -474,3 +893,16 @@ section .data
         db 0x3C,0x42,0x42,0x3C,0x42,0x42,0x3C,0x00 ; 8
         db 0x3C,0x42,0x42,0x3E,0x02,0x04,0x38,0x00 ; 9
         db 0x00,0x18,0x18,0x00,0x18,0x18,0x00,0x00 ; :
+
+section .bss
+    desktop_mouse_x resd 1
+    desktop_mouse_y resd 1
+    desktop_cursor_x resd 1
+    desktop_cursor_y resd 1
+    desktop_packet resb 3
+    desktop_packet_stage resb 1
+    desktop_mouse_buttons resb 1
+    desktop_cursor_drawn resb 1
+    desktop_window resb 1
+    desktop_start_open resb 1
+    desktop_cursor_saved resd MOUSE_WIDTH * MOUSE_HEIGHT
