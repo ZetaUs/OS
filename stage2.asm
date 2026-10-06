@@ -20,7 +20,11 @@ start:
     mov ax, 0x0013
     int 0x10
 
-    ; Try VBE mode 0x115 (800x600x24) - best quality supported in QEMU
+    ; Display boot message
+    mov si, boot_msg
+    call print_string
+
+    ; Try VBE mode 0x115 (800x600x16) - best quality supported in QEMU
     mov ax, 0x4F01
     mov cx, 0x0115
     mov di, vbe_mode_info
@@ -33,7 +37,7 @@ start:
     jnz .mode_found
 
 .try_next_mode:
-    ; Try VBE mode 0x112 (640x480x24) as fallback
+    ; Try VBE mode 0x112 (640x480x16) as fallback
     mov ax, 0x4F01
     mov cx, 0x0112
     mov di, vbe_mode_info
@@ -68,6 +72,10 @@ start:
     int 0x10
     cmp ax, 0x004F
     jne vbe_error
+
+    ; Display VBE success message
+    mov si, vbe_ok_msg
+    call print_string
 
     mov si, kernel_dap
     mov dl, [boot_drive]
@@ -160,6 +168,8 @@ hzk_dap:
     dd 0
 
 boot_drive: db 0
+boot_msg: db 'Nova OS Booting...', 13, 10, 0
+vbe_ok_msg: db 'VBE Mode OK', 13, 10, 0
 error_message: db 'Kernel load error', 0
 vbe_error_message: db 'VBE mode error', 0
 framebuffer_base: dd 0
