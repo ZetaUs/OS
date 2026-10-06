@@ -127,29 +127,16 @@ desktop_draw_scene:
     call desktop_draw_computer_icon
     push dword 15
     push dword computer_label
-    push dword 26
-    push dword 6
+    push dword 38
+    push dword 168
     call draw_text_small
     add esp, 16
 
-    push dword 14
-    push dword 4
-    push dword 22
-    push dword 52
-    push dword 7
-    call draw_rect
-    add esp, 20
-    push dword 6
-    push dword 14
-    push dword 22
-    push dword 54
-    push dword 5
-    call draw_rect
-    add esp, 20
+    call desktop_draw_explorer_icon
     push dword 14
     push dword explorer_label
-    push dword 68
-    push dword 30
+    push dword 320
+    push dword 282
     call draw_text_small
     add esp, 16
 
