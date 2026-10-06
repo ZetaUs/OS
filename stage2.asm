@@ -174,6 +174,30 @@ print_string:
 .done:
     ret
 
+; Print 32-bit hex value in EAX to VGA text mode at ESI
+print_hex:
+    push ecx
+    push edx
+    push ebx
+    mov ecx, 8
+.hex_loop:
+    rol eax, 4
+    mov edx, eax
+    and edx, 0xF
+    cmp dl, 10
+    jl .hex_digit
+    add dl, 7
+.hex_digit:
+    add dl, '0'
+    mov [esi], dl
+    add esi, 2
+    dec ecx
+    jnz .hex_loop
+    pop ebx
+    pop edx
+    pop ecx
+    ret
+
 align 8
 gdt_start:
     dq 0
@@ -260,11 +284,67 @@ continue_boot:
     mov edx, [0x500C]        ; pitch
     movzx esi, byte [0x5010] ; bpp
     
+    ; Debug: Show framebuffer info in VGA text mode
+    mov edi, 0xB8000
+    
+    ; Show "FB="
+    mov word [edi], 0x0E46   ; 'F'
+    mov word [edi+2], 0x0E42 ; 'B'
+    mov word [edi+4], 0x0E3D ; '='
+    
+    ; Show framebuffer address in hex (simplified)
+    ; Just show first 4 hex digits of the address
+    mov eax, [0x5000]
+    shr eax, 16              ; Get upper 16 bits
+    mov ecx, 4
+    mov esi, edi + 10
+.addr_loop:
+    rol eax, 4
+    mov edx, eax
+    and edx, 0xF
+    cmp dl, 10
+    jl .digit
+    add dl, 7
+.digit:
+    add dl, '0'
+    mov [esi], dl
+    add esi, 2
+    dec ecx
+    jnz .addr_loop
+    
+    ; Show "W=" and width
+    mov word [edi+20], 0x0E57 ; 'W'
+    mov word [edi+22], 0x0E3D ; '='
+    mov eax, [0x5004]
+    mov esi, edi + 26
+    call print_hex
+    
+    ; Show "H=" and height
+    mov word [edi+40], 0x0E48 ; 'H'
+    mov word [edi+42], 0x0E3D ; '='
+    mov eax, [0x5008]
+    mov esi, edi + 46
+    call print_hex
+    
+    ; Show "BPP=" and bpp
+    mov word [edi+60], 0x0E42 ; 'B'
+    mov word [edi+62], 0x0E50 ; 'P'
+    mov word [edi+64], 0x0E50 ; 'P'
+    mov word [edi+66], 0x0E3D ; '='
+    movzx eax, byte [0x5010]
+    mov esi, edi + 70
+    call print_hex
+    
+    ; If framebuffer is 0, halt immediately
+    cmp dword [0x5000], 0
+    je .halt
+    
     ; Fill framebuffer with blue (0x0000AA in 24-bit, or RGB565 blue in 16-bit)
-    mov edi, eax             ; edi = framebuffer address
-    mov eax, ebx             ; eax = width
-    mul ecx                  ; eax = width * height (total pixels)
+    mov edi, [0x5000]        ; edi = framebuffer address
+    mov eax, [0x5004]        ; eax = width
+    mul dword [0x5008]       ; eax = width * height (total pixels)
     mov ecx, eax             ; ecx = pixel count
+    movzx esi, byte [0x5010] ; bpp
     
 .fill_loop:
     cmp esi, 16
@@ -303,19 +383,18 @@ continue_boot:
     jnz .fill_loop
 
 .skip_write:
+    ; Show "DONE" after filling
+    mov edi, 0xB8000 + 160
+    mov word [edi], 0x0C44   ; 'D'
+    mov word [edi+2], 0x0C4F ; 'O'
+    mov word [edi+4], 0x0C4E ; 'N'
+    mov word [edi+6], 0x0C45 ; 'E'
+
+.halt:
     ; Halt after filling framebuffer
     cli
     hlt
-    jmp .skip_write
-    
-    ; Call the kernel (32-bit protected mode) with 5 parameters
-    ; push dword [0x5010]  ; bpp
-    ; push dword [0x500C]  ; pitch
-    ; push dword [0x5008]  ; height
-    ; push dword [0x5004]  ; width
-    ; push dword [0x5000]  ; framebuffer_base
-    ; call 0x10000
-    ; add esp, 20
+    jmp .halt
 
 halt_kernel:
     cli
