@@ -3,6 +3,7 @@ setlocal
 taskkill /f /im qemu-system-x86_64.exe >nul 2>&1
 taskkill /f /im qemu-system-i386.exe >nul 2>&1
 call "%~dp0push.bat"
+pushd "%~dp0"
 set "ROOT=%~dp0.."
 set "NASM=%ROOT%\Program\NASM\nasm.exe"
 set "DEVCPP_BIN="
@@ -44,7 +45,7 @@ echo [5/7] Compiling the freestanding C++ kernel with Dev-C++...
 if errorlevel 1 exit /b 1
 
 echo [6/7] Linking and flattening the kernel...
-"%LD%" -mi386pe --image-base 0 --section-alignment 16 --file-alignment 16 --section-start .text=0x10000 -e _kernel_main -o "%OUT%\kernel.exe" "%OUT%\kernel.o" "%OUT%\login.o" "%OUT%\desktop.o"
+"%LD%" -mi386pe --image-base 0 --section-alignment 16 --file-alignment 16 --section-start .text=0x200000 -e _kernel_main -o "%OUT%\kernel.exe" "%OUT%\kernel.o" "%OUT%\login.o" "%OUT%\desktop.o"
 if errorlevel 1 exit /b 1
 "%OBJCOPY%" --only-section=.text --only-section=.rdata --only-section=.data -O binary "%OUT%\kernel.exe" "%OUT%\kernel.bin"
 if errorlevel 1 exit /b 1
@@ -54,7 +55,7 @@ for %%F in ("%OUT%\kernel.bin") do if %%~zF GTR 32768 (
   exit /b 1
 )
 
-echo [7/7] Building disk images...
+echo [7/8] Building BIOS disk images...
 
 :: Layout:
 ::   LBA 0: boot sector (512 bytes)
@@ -72,4 +73,19 @@ for %%F in ("%OUT%\boot.bin") do if not %%~zF==512 (
   echo Boot sector must be 512 bytes, got %%~zF bytes
   exit /b 1
 )
-echo Built %OUT%\nova-os.img
+
+echo [8/8] Building UEFI boot files...
+set "UEFI_OUT=%OUT%\uefi\EFI\BOOT"
+if not exist "%UEFI_OUT%" mkdir "%UEFI_OUT%"
+"%NASM%" -f win64 "%~dp0uefi_transition.asm" -o "%OUT%\uefi_transition.o"
+if errorlevel 1 exit /b 1
+"%NASM%" -f win64 "%~dp0uefi_kernel_blob.asm" -o "%OUT%\uefi_kernel_blob.o"
+if errorlevel 1 exit /b 1
+"%GXX%" -m64 -std=c++11 -Os -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -fno-stack-protector -fno-pic -fno-pie -fno-builtin -c "%~dp0uefi_boot.cpp" -o "%OUT%\uefi_boot.o"
+if errorlevel 1 exit /b 1
+"%GXX%" -m64 -nostdlib -Wl,--subsystem,10 -Wl,--entry,efi_main -Wl,--image-base,0x100000 -Wl,--file-alignment,512 -Wl,--section-alignment,4096 -o "%UEFI_OUT%\BOOTX64.EFI" "%OUT%\uefi_boot.o" "%OUT%\uefi_transition.o" "%OUT%\uefi_kernel_blob.o"
+if errorlevel 1 exit /b 1
+
+echo Built BIOS image %OUT%\nova-os.img
+echo Built UEFI boot file %UEFI_OUT%\BOOTX64.EFI
+popd
