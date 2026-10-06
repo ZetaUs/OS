@@ -20,6 +20,27 @@ start:
     mov ax, 0x0013
     int 0x10
 
+    ; Query a VBE linear framebuffer mode for its physical base address.
+    mov ax, 0x4F01
+    mov cx, 0x0118
+    mov di, vbe_mode_info
+    int 0x10
+    cmp ax, 0x004F
+    jne vbe_error
+    test word [vbe_mode_info], 0x0081
+    jz vbe_error
+    mov eax, [vbe_mode_info + 40]
+    test eax, eax
+    jz vbe_error
+    mov [framebuffer_base], eax
+
+    ; Set VBE mode 118h with the linear framebuffer enabled.
+    mov ax, 0x4F02
+    mov bx, 0x4118
+    int 0x10
+    cmp ax, 0x004F
+    jne vbe_error
+
     mov si, kernel_dap
     mov dl, [boot_drive]
     mov ah, 0x42
@@ -41,6 +62,20 @@ start:
     or eax, 1
     mov cr0, eax
     jmp 0x08:protected_mode_entry
+
+vbe_error:
+    mov si, vbe_error_message
+.print:
+    lodsb
+    test al, al
+    jz .halt
+    mov ah, 0x0E
+    int 0x10
+    jmp .print
+.halt:
+    cli
+    hlt
+    jmp .halt
 
 kernel_load_error:
     mov si, error_message
@@ -85,6 +120,10 @@ hzk_dap:
 
 boot_drive: db 0
 error_message: db 'Kernel load error', 0
+vbe_error_message: db 'VBE mode error', 0
+framebuffer_base: dd 0
+align 4
+vbe_mode_info: times 256 db 0
 
 bits 32
 protected_mode_entry:
@@ -95,10 +134,74 @@ protected_mode_entry:
     mov gs, ax
     mov ss, ax
     mov esp, 0x90000
+
+    ; Configure Bochs/QEMU VBE for a 1920x1080x32 linear framebuffer.
+    mov dx, 0x01CE
+    xor ax, ax
+    out dx, ax
+    inc dx
+    in ax, dx
+    cmp ax, 0xB0C5
+    jne vbe_protected_error
+
+    mov dx, 0x01CE
+    mov ax, 4
+    out dx, ax
+    inc dx
+    xor ax, ax
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 1
+    out dx, ax
+    inc dx
+    mov ax, 1920
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 2
+    out dx, ax
+    inc dx
+    mov ax, 1080
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 3
+    out dx, ax
+    inc dx
+    mov ax, 32
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 6
+    out dx, ax
+    inc dx
+    mov ax, 1920
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 4
+    out dx, ax
+    inc dx
+    mov ax, 0x0041
+    out dx, ax
+
+    mov eax, [framebuffer_base]
+    mov [0x5000], eax
+    mov dword [0x5004], 1920
+    mov dword [0x5008], 1080
+    mov dword [0x500C], 7680
     mov eax, 0x10000
+    push dword [0x5000]
     call eax
+    add esp, 4
 
 halt_kernel:
     cli
     hlt
     jmp halt_kernel
+
+vbe_protected_error:
+    cli
+    hlt
+    jmp vbe_protected_error
