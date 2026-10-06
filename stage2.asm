@@ -11,16 +11,32 @@ start:
     mov [boot_drive], dl
     sti
 
-    ; Enable A20 line (fast method via keyboard controller)
     in al, 0x92
     or al, 2
     out 0x92, al
 
-    ; Switch to VGA mode 0x13 (320x200x8)
     mov ax, 0x0013
     int 0x10
 
-    ; Load kernel from disk
+    mov ax, 0x4F01
+    mov cx, 0x0118
+    mov di, vbe_mode_info
+    int 0x10
+    cmp ax, 0x004F
+    jne vbe_error
+    test word [vbe_mode_info], 0x0081
+    jz vbe_error
+    mov eax, [vbe_mode_info + 40]
+    test eax, eax
+    jz vbe_error
+    mov [framebuffer_base], eax
+
+    mov ax, 0x4F02
+    mov bx, 0x4118
+    int 0x10
+    cmp ax, 0x004F
+    jne vbe_error
+
     mov si, kernel_dap
     mov dl, [boot_drive]
     mov ah, 0x42
@@ -29,69 +45,43 @@ start:
 
     cli
     lgdt [gdt_descriptor]
-    
-    ; Display protected mode message
-    mov si, prot_mode_msg
-    call print_string
-    
-    ; Disable interrupts and prepare for protected mode
     in al, 0x21
     or al, 0xFF
     out 0x21, al
     in al, 0xA1
     or al, 0xFF
     out 0xA1, al
-    
+
     mov eax, cr0
     or eax, 1
     mov cr0, eax
-    ; Far jump to protected mode entry using retf
-    push 0x08
-    push word protected_mode_entry
-    retf
+    jmp 0x08:protected_mode_entry
+
+vbe_error:
+    mov si, vbe_error_message
+    jmp print_error
 
 kernel_load_error:
-    mov si, error_message
-.print:
+    mov si, kernel_error_message
+
+print_error:
+    mov ah, 0x0E
+.print_next:
     lodsb
     test al, al
     jz .halt
-    mov ah, 0x0E
     int 0x10
-    jmp .print
+    jmp .print_next
 .halt:
     cli
     hlt
     jmp .halt
 
-; Print string function
-print_string:
-    lodsb
-    test al, al
-    jz .done
-    mov ah, 0x0E
-    int 0x10
-    jmp print_string
-.done:
-    ret
-
 align 8
 gdt_start:
     dq 0
-    ; 32-bit code segment (base=0, limit=4GB)
-    dw 0xFFFF        ; Limit (15:0)
-    dw 0x0000        ; Base (15:0)
-    db 0x00          ; Base (23:16)
-    db 0x9A          ; Access (present, ring 0, code, readable)
-    db 0xCF          ; Flags (G=1, D=1) + Limit (19:16)
-    db 0x00          ; Base (31:24)
-    ; 32-bit data segment (base=0, limit=4GB)
-    dw 0xFFFF        ; Limit (15:0)
-    dw 0x0000        ; Base (15:0)
-    db 0x00          ; Base (23:16)
-    db 0x92          ; Access (present, ring 0, data, writable)
-    db 0xCF          ; Flags (G=1, D=1) + Limit (19:16)
-    db 0x00          ; Base (31:24)
+    dq 0x00CF9A000000FFFF
+    dq 0x00CF92000000FFFF
 gdt_end:
 
 gdt_descriptor:
@@ -100,15 +90,18 @@ gdt_descriptor:
 
 kernel_dap:
     db 0x10, 0
-    dw 128
+    dw 64
     dw 0
     dw 0x1000
-    dd 18
+    dd 9
     dd 0
 
 boot_drive: db 0
-prot_mode_msg: db 'Entering protected mode...', 13, 10, 0
-error_message: db 'Kernel load error', 0
+vbe_error_message: db 'VBE mode error', 0
+kernel_error_message: db 'Kernel load error', 0
+framebuffer_base: dd 0
+align 4
+vbe_mode_info: times 256 db 0
 
 bits 32
 protected_mode_entry:
@@ -121,17 +114,73 @@ protected_mode_entry:
     mov ss, ax
     mov esp, 0x90000
 
-continue_boot:
-    ; Call the kernel (32-bit protected mode) with 5 parameters
-    push dword 8
-    push dword 320
-    push dword 200
-    push dword 320
-    push dword 0xA0000
-    call 0x10000
-    add esp, 20
+    mov dx, 0x01CE
+    xor ax, ax
+    out dx, ax
+    inc dx
+    in ax, dx
+    cmp ax, 0xB0C5
+    jne vbe_protected_halt
 
-halt_kernel:
+    mov dx, 0x01CE
+    mov ax, 4
+    out dx, ax
+    inc dx
+    xor ax, ax
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 1
+    out dx, ax
+    inc dx
+    mov ax, 1920
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 2
+    out dx, ax
+    inc dx
+    mov ax, 1080
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 3
+    out dx, ax
+    inc dx
+    mov ax, 32
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 6
+    out dx, ax
+    inc dx
+    mov ax, 1920
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 4
+    out dx, ax
+    inc dx
+    mov ax, 0x0041
+    out dx, ax
+
+    mov eax, [framebuffer_base]
+    mov [0x5000], eax
+    mov dword [0x5004], 1920
+    mov dword [0x5008], 1080
+    mov dword [0x500C], 7680
+
+    mov eax, 0x10000
+    push dword [0x5000]
+    call eax
+    add esp, 4
+
+kernel_halt:
     cli
     hlt
-    jmp halt_kernel
+    jmp kernel_halt
+
+vbe_protected_halt:
+    cli
+    hlt
+    jmp vbe_protected_halt
