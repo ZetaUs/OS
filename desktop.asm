@@ -6,8 +6,8 @@ SCREEN_HEIGHT equ 1440
 SCREEN_PITCH equ 10240
 VIEWPORT_X equ 0
 VIEWPORT_Y equ 0
-VIEWPORT_WIDTH equ 320
-VIEWPORT_HEIGHT equ 180
+VIEWPORT_WIDTH equ 427
+VIEWPORT_HEIGHT equ 240
 LOGICAL_SCALE equ 6
 
 global _desktop_screen
@@ -87,17 +87,17 @@ desktop_draw_scene:
     ; Fill the full-screen logical desktop with a Windows-inspired blue field.
     push dword 9
     push dword VIEWPORT_HEIGHT
-    push dword 320
+    push dword 427
     push dword 0
     push dword 0
     call draw_rect
     add esp, 20
 
     ; Reuse the Nova logo as the wallpaper mark (centered).
-    push dword 8
-    push dword 8
-    push dword 86
-    push dword 156
+    push dword 48
+    push dword 48
+    push dword 96
+    push dword 189
     call desktop_draw_logo
     add esp, 16
 
@@ -124,15 +124,15 @@ desktop_draw_scene:
     ; Windows-style taskbar anchored to the bottom edge.
     push dword 8
     push dword 8
-    push dword 320
-    push dword 172
+    push dword 427
+    push dword 232
     push dword 0
     call draw_rect
     add esp, 20
     push dword 7
     push dword 1
-    push dword 320
-    push dword 171
+    push dword 427
+    push dword 231
     push dword 0
     call draw_rect
     add esp, 20
@@ -140,7 +140,7 @@ desktop_draw_scene:
     ; Use the same Nova logo on the Start button.
     push dword 6
     push dword 6
-    push dword 173
+    push dword 233
     push dword 1
     call desktop_draw_logo
     add esp, 16
@@ -149,14 +149,14 @@ desktop_draw_scene:
     push dword 8
     push dword 8
     push dword 42
-    push dword 172
-    push dword 278
+    push dword 232
+    push dword 385
     call draw_rect
     add esp, 20
     push dword 15
     push dword clock_text
-    push dword 172
-    push dword 279
+    push dword 232
+    push dword 386
     call draw_text
     add esp, 16
 
@@ -303,28 +303,28 @@ desktop_draw_window:
     push dword 8
     push dword 110
     push dword 170
-    push dword 31
-    push dword 75
+    push dword 65
+    push dword 128
     call draw_rect
     add esp, 20
     push dword 1
     push dword 18
     push dword 162
-    push dword 35
-    push dword 79
+    push dword 69
+    push dword 132
     call draw_rect
     add esp, 20
     push dword 7
     push dword 92
     push dword 162
-    push dword 53
-    push dword 79
+    push dword 87
+    push dword 132
     call draw_rect
     add esp, 20
     push dword 15
     push dword close_text
-    push dword 39
-    push dword 222
+    push dword 73
+    push dword 275
     call draw_text
     add esp, 16
 
@@ -332,14 +332,14 @@ desktop_draw_window:
     jne .files_window
     push dword 15
     push dword pc_window_title
-    push dword 40
-    push dword 82
+    push dword 74
+    push dword 135
     call draw_text
     add esp, 16
     push dword 0
     push dword disk_label
-    push dword 79
-    push dword 94
+    push dword 113
+    push dword 147
     call draw_text
     add esp, 16
     jmp .window_done
@@ -347,14 +347,14 @@ desktop_draw_window:
 .files_window:
     push dword 15
     push dword explorer_window_title
-    push dword 40
-    push dword 82
+    push dword 74
+    push dword 135
     call draw_text
     add esp, 16
     push dword 0
     push dword empty_folder_text
-    push dword 79
-    push dword 94
+    push dword 113
+    push dword 147
     call draw_text
     add esp, 16
 
@@ -364,49 +364,64 @@ desktop_draw_window:
 desktop_draw_start_menu:
     cmp byte [desktop_start_open], 0
     je .menu_done
+    ; 外框 (6x逻辑: x=4, y=170, w=80, h=60) → 物理: x=24, y=1020, w=480, h=360
     push dword 8
-    push dword 112
-    push dword 104
-    push dword 34
+    push dword 60
+    push dword 80
+    push dword 170
     push dword 4
     call draw_rect
     add esp, 20
+    ; 内框 (6x逻辑: x=6, y=172, w=76, h=56) → 物理: x=36, y=1032, w=456, h=336
     push dword 1
-    push dword 16
-    push dword 100
-    push dword 38
+    push dword 56
+    push dword 76
+    push dword 172
     push dword 6
     call draw_rect
     add esp, 20
-    push dword 15
+    ; 标题 "Nova" - 6x逻辑(8,176)→物理(48,1056)→2x逻辑(24,528)
+    push dword 24
+    push dword 528
     push dword menu_title
-    push dword 41
-    push dword 10
-    call draw_text
-    add esp, 16
     push dword 15
+    call draw_text_small
+    add esp, 16
+    ; 分隔线 (6x逻辑: x=8, y=184, w=72, h=1) → 物理: x=48, y=1104
+    push dword 7
+    push dword 1
+    push dword 72
+    push dword 184
+    push dword 8
+    call draw_rect
+    add esp, 20
+    ; 资源管理器 - 6x逻辑(8,190)→物理(48,1140)→2x逻辑(24,570)
+    push dword 24
+    push dword 570
     push dword explorer_menu_item
-    push dword 58
-    push dword 12
-    call draw_text
-    add esp, 16
     push dword 15
+    call draw_text_small
+    add esp, 16
+    ; 计算机 - 6x逻辑(8,202)→物理(48,1212)→2x逻辑(24,606)
+    push dword 24
+    push dword 606
     push dword computer_menu_item
-    push dword 76
-    push dword 12
-    call draw_text
-    add esp, 16
     push dword 15
+    call draw_text_small
+    add esp, 16
+    ; 重启 - 6x逻辑(8,214)→物理(48,1284)→2x逻辑(24,642)
+    push dword 24
+    push dword 642
     push dword restart_menu_item
-    push dword 94
-    push dword 12
-    call draw_text
-    add esp, 16
     push dword 15
+    call draw_text_small
+    add esp, 16
+    ; 关机 - 6x逻辑(8,226)→物理(48,1356)→2x逻辑(24,678)
+    push dword 24
+    push dword 678
     push dword shutdown_menu_item
-    push dword 112
-    push dword 12
-    call draw_text
+    push dword 15
+    call draw_text_small
     add esp, 16
 
 .menu_done:
@@ -481,17 +496,17 @@ desktop_hit_test:
     je .check_start_button
     cmp dword [desktop_mouse_x], 24
     jl .close_menu_outside
-    cmp dword [desktop_mouse_x], 648
+    cmp dword [desktop_mouse_x], 408
     jg .close_menu_outside
-    cmp dword [desktop_mouse_y], 186
+    cmp dword [desktop_mouse_y], 1152
     jl .close_menu_outside
-    cmp dword [desktop_mouse_y], 294
+    cmp dword [desktop_mouse_y], 1194
     jle .open_files
-    cmp dword [desktop_mouse_y], 402
+    cmp dword [desktop_mouse_y], 1248
     jle .open_pc
-    cmp dword [desktop_mouse_y], 510
+    cmp dword [desktop_mouse_y], 1302
     jle .restart_action
-    cmp dword [desktop_mouse_y], 618
+    cmp dword [desktop_mouse_y], 1356
     jle .shutdown_action
 .close_menu_outside:
     mov byte [desktop_start_open], 0
@@ -828,6 +843,57 @@ draw_text_small:
     pop ebp
     ret
 
+; draw_chinese_text(x, y, string_ptr, color) - draws Chinese text using 12x12 glyphs
+draw_chinese_text:
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
+    mov esi, [ebp+16]  ; string pointer
+    mov ebx, [ebp+8]   ; x
+    mov edx, [ebp+12]  ; y
+    mov edi, [ebp+20]  ; color
+.chinese_next:
+    movzx eax, byte [esi]
+    test al, al
+    jz .chinese_done
+    ; Check for Chinese characters (UTF-8 multi-byte)
+    cmp al, 0xE4
+    je .chinese_draw_char
+    cmp al, 0xE8
+    je .chinese_draw_char
+    cmp al, 0xE9
+    je .chinese_draw_char
+    ; Skip non-Chinese bytes
+    inc esi
+    jmp .chinese_next
+.chinese_draw_char:
+    ; Simple approach: draw each Chinese character as a placeholder
+    ; For now, use a simple box representation
+    push edi
+    push edx
+    push ebx
+    push 12
+    push 12
+    call draw_rect
+    add esp, 20
+    add ebx, 14
+    add esi, 3  ; Skip UTF-8 3-byte sequence
+    jmp .chinese_next
+.chinese_done:
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    pop ebp
+    ret
+
 ; draw_char(x, y, character, color)
 draw_char:
     push ebp
@@ -951,11 +1017,11 @@ section .data
     explorer_window_title: db 'EXPLORER', 0
     disk_label: db 'LOCAL DISK C', 0
     empty_folder_text: db 'NO FILES YET', 0
-    menu_title: db 'NOVA OS', 0
-    computer_menu_item: db 'COMPUTER', 0
-    explorer_menu_item: db 'EXPLORER', 0
-    restart_menu_item: db 'RESTART', 0
-    shutdown_menu_item: db 'SHUTDOWN', 0
+    menu_title: db 'NOVA', 0
+    computer_menu_item: db 'Computer', 0
+    explorer_menu_item: db 'Explorer', 0
+    restart_menu_item: db 'Restart', 0
+    shutdown_menu_item: db 'Shutdown', 0
     desktop_empty_idtr: dw 0
                           dd 0
     blank_glyph: times 8 db 0
