@@ -117,10 +117,10 @@ desktop_draw_scene:
     add esp, 20
 
     ; Reuse the Nova logo as the wallpaper mark.
-    push dword 48
-    push dword 48
-    push dword 66
-    push dword 189
+    push dword 16
+    push dword 16
+    push dword 38
+    push dword 197
     call desktop_draw_logo
     add esp, 16
 
