@@ -93,34 +93,11 @@ desktop_draw_scene:
     call draw_rect
     add esp, 20
 
-    ; Layered blue panels create a subtle geometric glow behind the logo.
-    push dword 1
-    push dword 120
-    push dword 120
-    push dword 30
-    push dword 153
-    call draw_rect
-    add esp, 20
-    push dword 1
-    push dword 80
-    push dword 100
-    push dword 50
-    push dword 163
-    call draw_rect
-    add esp, 20
-    push dword 1
-    push dword 40
-    push dword 100
-    push dword 70
-    push dword 173
-    call draw_rect
-    add esp, 20
-
-    ; Reuse the Nova logo as the wallpaper mark.
-    push dword 16
-    push dword 16
-    push dword 38
-    push dword 197
+    ; Reuse the Nova logo as the wallpaper mark (centered).
+    push dword 8
+    push dword 8
+    push dword 86
+    push dword 156
     call desktop_draw_logo
     add esp, 16
 
@@ -148,14 +125,14 @@ desktop_draw_scene:
     push dword 8
     push dword 8
     push dword 320
-    push dword 232
+    push dword 172
     push dword 0
     call draw_rect
     add esp, 20
     push dword 7
     push dword 1
     push dword 320
-    push dword 231
+    push dword 171
     push dword 0
     call draw_rect
     add esp, 20
@@ -163,7 +140,7 @@ desktop_draw_scene:
     ; Use the same Nova logo on the Start button.
     push dword 6
     push dword 6
-    push dword 233
+    push dword 173
     push dword 1
     call desktop_draw_logo
     add esp, 16
@@ -172,13 +149,13 @@ desktop_draw_scene:
     push dword 8
     push dword 8
     push dword 42
-    push dword 232
+    push dword 172
     push dword 278
     call draw_rect
     add esp, 20
     push dword 15
     push dword clock_text
-    push dword 232
+    push dword 172
     push dword 279
     call draw_text
     add esp, 16
