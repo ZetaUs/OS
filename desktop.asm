@@ -1,9 +1,9 @@
 bits 32
 
 FRAMEBUFFER_PTR equ 0x5000
-SCREEN_WIDTH equ 1920
-SCREEN_HEIGHT equ 1080
-SCREEN_PITCH equ 7680
+SCREEN_WIDTH equ 2560
+SCREEN_HEIGHT equ 1440
+SCREEN_PITCH equ 10240
 VIEWPORT_X equ 0
 VIEWPORT_Y equ 0
 VIEWPORT_WIDTH equ 320
@@ -22,8 +22,8 @@ _desktop_screen:
     push edi
     cld
 
-    mov dword [desktop_mouse_x], 960
-    mov dword [desktop_mouse_y], 500
+    mov dword [desktop_mouse_x], 1280
+    mov dword [desktop_mouse_y], 700
     mov byte [desktop_packet_stage], 0
     mov byte [desktop_mouse_buttons], 0
     mov byte [desktop_cursor_drawn], 0
@@ -95,32 +95,32 @@ desktop_draw_scene:
 
     ; Layered blue panels create a subtle geometric glow behind the logo.
     push dword 1
-    push dword 180
     push dword 120
-    push dword 0
-    push dword 0
+    push dword 120
+    push dword 30
+    push dword 153
     call draw_rect
     add esp, 20
     push dword 1
-    push dword 110
+    push dword 80
     push dword 100
-    push dword 0
-    push dword 120
-    call draw_rect
-    add esp, 20
-    push dword 1
     push dword 50
+    push dword 163
+    call draw_rect
+    add esp, 20
+    push dword 1
+    push dword 40
     push dword 100
-    push dword 110
-    push dword 220
+    push dword 70
+    push dword 173
     call draw_rect
     add esp, 20
 
     ; Reuse the Nova logo as the wallpaper mark.
     push dword 48
     push dword 48
-    push dword 50
-    push dword 204
+    push dword 66
+    push dword 189
     call desktop_draw_logo
     add esp, 16
 
@@ -148,14 +148,14 @@ desktop_draw_scene:
     push dword 8
     push dword 8
     push dword 320
-    push dword 172
+    push dword 232
     push dword 0
     call draw_rect
     add esp, 20
     push dword 7
     push dword 1
     push dword 320
-    push dword 171
+    push dword 231
     push dword 0
     call draw_rect
     add esp, 20
@@ -163,7 +163,7 @@ desktop_draw_scene:
     ; Use the same Nova logo on the Start button.
     push dword 6
     push dword 6
-    push dword 173
+    push dword 233
     push dword 1
     call desktop_draw_logo
     add esp, 16
@@ -172,13 +172,13 @@ desktop_draw_scene:
     push dword 8
     push dword 8
     push dword 42
-    push dword 172
+    push dword 232
     push dword 278
     call draw_rect
     add esp, 20
     push dword 15
     push dword clock_text
-    push dword 172
+    push dword 232
     push dword 279
     call draw_text
     add esp, 16
@@ -326,27 +326,27 @@ desktop_draw_window:
     push dword 8
     push dword 110
     push dword 170
-    push dword 65
+    push dword 31
     push dword 75
     call draw_rect
     add esp, 20
     push dword 1
     push dword 18
     push dword 162
-    push dword 69
+    push dword 35
     push dword 79
     call draw_rect
     add esp, 20
     push dword 7
     push dword 92
     push dword 162
-    push dword 87
+    push dword 53
     push dword 79
     call draw_rect
     add esp, 20
     push dword 15
     push dword close_text
-    push dword 73
+    push dword 39
     push dword 222
     call draw_text
     add esp, 16
@@ -355,13 +355,13 @@ desktop_draw_window:
     jne .files_window
     push dword 15
     push dword pc_window_title
-    push dword 74
+    push dword 40
     push dword 82
     call draw_text
     add esp, 16
     push dword 0
     push dword disk_label
-    push dword 113
+    push dword 79
     push dword 94
     call draw_text
     add esp, 16
@@ -370,13 +370,13 @@ desktop_draw_window:
 .files_window:
     push dword 15
     push dword explorer_window_title
-    push dword 74
+    push dword 40
     push dword 82
     call draw_text
     add esp, 16
     push dword 0
     push dword empty_folder_text
-    push dword 113
+    push dword 79
     push dword 94
     call draw_text
     add esp, 16
@@ -390,44 +390,44 @@ desktop_draw_start_menu:
     push dword 8
     push dword 112
     push dword 104
-    push dword 60
+    push dword 34
     push dword 4
     call draw_rect
     add esp, 20
     push dword 1
     push dword 16
     push dword 100
-    push dword 64
+    push dword 38
     push dword 6
     call draw_rect
     add esp, 20
     push dword 15
     push dword menu_title
-    push dword 67
+    push dword 41
     push dword 10
     call draw_text
     add esp, 16
     push dword 15
     push dword explorer_menu_item
-    push dword 84
+    push dword 58
     push dword 12
     call draw_text
     add esp, 16
     push dword 15
     push dword computer_menu_item
-    push dword 102
+    push dword 76
     push dword 12
     call draw_text
     add esp, 16
     push dword 15
     push dword restart_menu_item
-    push dword 120
+    push dword 94
     push dword 12
     call draw_text
     add esp, 16
     push dword 15
     push dword shutdown_menu_item
-    push dword 138
+    push dword 112
     push dword 12
     call draw_text
     add esp, 16
@@ -506,15 +506,15 @@ desktop_hit_test:
     jl .close_menu_outside
     cmp dword [desktop_mouse_x], 648
     jg .close_menu_outside
-    cmp dword [desktop_mouse_y], 486
+    cmp dword [desktop_mouse_y], 186
     jl .close_menu_outside
-    cmp dword [desktop_mouse_y], 594
+    cmp dword [desktop_mouse_y], 294
     jle .open_files
-    cmp dword [desktop_mouse_y], 702
+    cmp dword [desktop_mouse_y], 402
     jle .open_pc
-    cmp dword [desktop_mouse_y], 810
+    cmp dword [desktop_mouse_y], 510
     jle .restart_action
-    cmp dword [desktop_mouse_y], 918
+    cmp dword [desktop_mouse_y], 618
     jle .shutdown_action
 .close_menu_outside:
     mov byte [desktop_start_open], 0
@@ -531,7 +531,7 @@ desktop_hit_test:
     jl .check_window
     cmp dword [desktop_mouse_x], 48
     jg .check_window
-    cmp dword [desktop_mouse_y], 1032
+    cmp dword [desktop_mouse_y], 1392
     jl .check_window
     cmp dword [desktop_mouse_y], SCREEN_HEIGHT
     jg .check_window
@@ -544,13 +544,13 @@ desktop_hit_test:
 .check_window:
     cmp byte [desktop_window], 0
     je .check_icons
-    cmp dword [desktop_mouse_x], 1300
+    cmp dword [desktop_mouse_x], 450
     jl .check_icons
-    cmp dword [desktop_mouse_x], 1450
+    cmp dword [desktop_mouse_x], 600
     jg .check_icons
-    cmp dword [desktop_mouse_y], 410
+    cmp dword [desktop_mouse_y], 180
     jl .check_icons
-    cmp dword [desktop_mouse_y], 510
+    cmp dword [desktop_mouse_y], 280
     jg .check_icons
     mov byte [desktop_window], 0
     mov eax, 1

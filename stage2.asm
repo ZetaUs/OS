@@ -133,14 +133,14 @@ protected_mode_entry:
     mov ax, 1
     out dx, ax
     inc dx
-    mov ax, 1920
+    mov ax, 2560
     out dx, ax
 
     mov dx, 0x01CE
     mov ax, 2
     out dx, ax
     inc dx
-    mov ax, 1080
+    mov ax, 1440
     out dx, ax
 
     mov dx, 0x01CE
@@ -154,7 +154,7 @@ protected_mode_entry:
     mov ax, 6
     out dx, ax
     inc dx
-    mov ax, 1920
+    mov ax, 2560
     out dx, ax
 
     mov dx, 0x01CE
@@ -166,14 +166,14 @@ protected_mode_entry:
 
     mov eax, [framebuffer_base]
     mov [0x5000], eax
-    mov dword [0x5004], 1920
-    mov dword [0x5008], 1080
-    mov dword [0x500C], 7680
+    mov dword [0x5004], 2560
+    mov dword [0x5008], 1440
+    mov dword [0x500C], 10240
 
     push dword 32
-    push dword 7680
-    push dword 1080
-    push dword 1920
+    push dword 10240
+    push dword 1440
+    push dword 2560
     push dword [0x5000]
     mov eax, 0x10000
     call eax

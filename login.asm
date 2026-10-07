@@ -2,8 +2,8 @@ bits 32
 
 ; VGA framebuffer address
 FRAMEBUFFER_PTR equ 0x5000
-SCREEN_WIDTH equ 1920
-SCREEN_HEIGHT equ 1080
+SCREEN_WIDTH equ 2560
+SCREEN_HEIGHT equ 1440
 LOGICAL_SCALE equ 6
 %include "mouse_data.inc"
 
@@ -28,8 +28,8 @@ _login_screen:
     push esi
     push edi
 
-    mov dword [g_mouse_x], 960
-    mov dword [g_mouse_y], 540
+    mov dword [g_mouse_x], 1280
+    mov dword [g_mouse_y], 720
     mov byte [mouse_packet_stage], 0
     mov byte [mouse_buttons], 0
     mov byte [cursor_drawn], 0
@@ -102,37 +102,37 @@ draw_login_scene:
     push COLOR_BORDER
     push 132
     push 180
-    push 34
-    push 70
+    push 54
+    push 123
     call draw_rect
     add esp, 20
 
     push COLOR_INNER
     push 124
     push 172
-    push 38
-    push 74
+    push 58
+    push 127
     call draw_rect
     add esp, 20
 
     push COLOR_BUTTON
     push 16
     push 100
-    push 90
-    push 110
+    push 114
+    push 163
     call draw_rect
     add esp, 20
 
     push COLOR_TEXT
-    push 93
-    push 148
+    push 115
+    push 201
     call draw_chinese_deng
     add esp, 12
     
-    ; 录: 12x12 at (160, 93), color=0
+    ; 录: 12x12 at (213, 115), color=0
     push COLOR_TEXT
-    push 93
-    push 160
+    push 115
+    push 213
     call draw_chinese_lu
     add esp, 12
 
@@ -284,14 +284,14 @@ update_mouse:
     jnz .redraw_mouse
 
     mov eax, [g_mouse_x]
-    cmp eax, 110 * LOGICAL_SCALE
+    cmp eax, 163 * LOGICAL_SCALE
     jl .redraw_mouse
-    cmp eax, 210 * LOGICAL_SCALE
+    cmp eax, 263 * LOGICAL_SCALE
     jg .redraw_mouse
     mov eax, [g_mouse_y]
-    cmp eax, 90 * LOGICAL_SCALE
+    cmp eax, 112 * LOGICAL_SCALE
     jl .redraw_mouse
-    cmp eax, 106 * LOGICAL_SCALE
+    cmp eax, 128 * LOGICAL_SCALE
     jl .login_clicked
     jmp .redraw_mouse
 
